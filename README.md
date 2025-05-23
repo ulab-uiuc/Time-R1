@@ -160,7 +160,7 @@ The $\theta_2$ model, after being trained in Stage 2, demonstrates strong capabi
 
 <!-- ![](figures/Stage2_result.png)
 ![](figures/Stage3_result.png) -->
-<img src="figures/Stage2_result.png" alt="Stage 2 Results" width="90%" style="display: block; margin-left: auto; margin-right: auto; margin-bottom: 25px;"/>
+<img src="figures/Stage2_result.png" alt="Stage 2 Results" width="90%" style="display: block; margin-left: auto; margin-right: auto; margin-bottom: 35px;"/>
 <img src="figures/Stage3_result.png" alt="Stage 3 Results" width="90%" style="display: block; margin-left: auto; margin-right: auto;"/>
   
 
