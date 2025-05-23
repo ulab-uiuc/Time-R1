@@ -142,7 +142,7 @@ While Stage 3 (Creative Future Scenario Generation) does not involve direct fine
 ## 📈 Results
 
 ### Stage 1: Temporal Comprehension ($\theta_1$)
-Through careful reward design and a phased training curriculum, our Stage 1 results have shown significant improvements, particularly in tasks like time-difference estimation, substantially surpassing the results reported in the main paper. The overall average performance of our $\theta_1$ model (after the 3-phase training) now exceeds that of models over 200 times its size, such as DeepSeek-V3-0324-671B.
+Through careful reward design and a phased training curriculum, our Stage 1 results have shown significant improvements, particularly in tasks like time-difference estimation, substantially surpassing the results reported in the main paper. **The overall average performance of our $\theta_1$ model (after the 3-phase training) now exceeds that of models over 200 times its size, such as DeepSeek-V3-0324-671B**.
 
 The impact of our dynamic reward mechanism is illustrated below. The blue curve represents the training progression of $\theta_1$ using our full 3-phase dynamic reward design, while the red curve shows an ablation study where the dynamic reward components are omitted (trained using `scripts/stage1_no_dynamic_reward.sh`).
 
@@ -154,7 +154,7 @@ The impact of our dynamic reward mechanism is illustrated below. The blue curve 
 </div>
 
 ### Stage 2 & 3: Future Prediction and Generation ($\theta_2$)
-The $\theta_2$ model, after being trained in Stage 2, demonstrates strong capabilities in both future event time prediction and creative future scenario generation (Stage 3 validation). Our results indicate that Time-R1 ($\theta_2$) surpasses specialized state-of-the-art reasoning models like DeepSeek-R1, which are also more than 200 times larger.
+The $\theta_2$ model, after being trained in Stage 2, demonstrates strong capabilities in both future event time prediction and creative future scenario generation (Stage 3). Our results indicate that Time-R1 ($\theta_2$) surpasses specialized state-of-the-art reasoning models like DeepSeek-R1, which are also more than 200 times larger.
 
 <div align="center">
 
