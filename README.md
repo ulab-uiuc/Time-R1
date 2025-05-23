@@ -6,21 +6,20 @@ Time-R1: Towards Comprehensive Temporal Reasoning in LLMs
 
 **Time-R1 is a framework designed to endow Language Models (LLMs) with comprehensive temporal reasoning capabilities, enabling them to progressively cultivate sophisticated temporal logic from past events, predict future occurrences, and creatively generate plausible future scenarios.**
 
-This repository contains the official code, the Time-Bench dataset, and pre-trained model checkpoints for our paper:
-> [**Time-R1: Towards Comprehensive Temporal Reasoning in LLMs**](https://arxiv.org/abs/2505.13508) > Zijia Liu, Peixuan Han, Haofei Yu, Haoru Li, Jiaxuan You  
+This repository contains the official code, the Time-Bench dataset, and pre-trained model checkpoints for our [paper](https://arxiv.org/abs/2505.13508):
+> **Time-R1: Towards Comprehensive Temporal Reasoning in LLMs** > Zijia Liu, Peixuan Han, Haofei Yu, Haoru Li, Jiaxuan You  
 
 <div align="center">
 
 <!-- ![](figures/output_examples.png) -->
-<img src="figures/output_examples.png" width="85%"/>
+<img src="figures/output_examples.png" width="80%"/>
 <br/><em>Figure: Time-R1 output examples: Event Prediction (Stage 2, Left) & Future Scenario Generation (Stage 3, Right).</em>
 </div>
 
 ## 🌟 Overview
 
 <div align="center">
-
-![](figures/time-r1_overview.png)
+<img src="figures/time-r1_overview.png" width="85%"/>
 
 </div>
 
@@ -31,7 +30,6 @@ Large Language Models (LLMs) demonstrate impressive capabilities but often lack 
 
 Our experiments show that a 3B-parameter Time-R1 model significantly outperforms models over 200 times its size on challenging future event prediction and creative scenario generation benchmarks.
 
----
 
 ## 📚 Released Resources
 
@@ -44,7 +42,6 @@ Our experiments show that a 3B-parameter Time-R1 model significantly outperforms
     * Includes checkpoints for $\theta_1$ (after Stage 1) and $\theta_2$ (after Stage 2).
 * **Source Code:** For training Time-R1 and evaluating on Time-Bench.
 
----
 
 ## 🚀 Key Features
 
@@ -55,7 +52,7 @@ Our experiments show that a 3B-parameter Time-R1 model significantly outperforms
 *   **Time-Bench Dataset:** A new large-scale, multi-task temporal reasoning dataset derived from ten years of news data.
 *   **Staged Model Checkpoints:** The training process yields distinct model checkpoints ($\theta_1$ and $\theta_2$) representing different stages of temporal reasoning capability, which can be reproduced using the provided scripts.
 
----
+
 
 ## 🧠 Dynamic Reward System
 
@@ -65,7 +62,7 @@ A core component of Time-R1 is its dynamic rule-based reward system. This system
 
 These modules implement nuanced scoring for different temporal aspects, adapting to the learning stage and task difficulty.
 
----
+
 
 ## 📂 Core Logic
 *   **RL Workflow:** Refer to `verl/trainer/main_ppo*.py` (e.g., `main_ppo_s1_p1.py`, `main_ppo_s2.py`) and `verl/trainer/ppo/ray_trainer.py`.
@@ -110,7 +107,7 @@ These modules implement nuanced scoring for different temporal aspects, adapting
     Ensure that system variables (like `CUDA_VISIBLE_DEVICES`, `WANDB_ENTITY` if using Weights & Biases, and paths to `BASE_MODEL` or `OUTPUT_BASE_DIR`) are correctly configured in your environment or within the bash scripts before execution. These are often marked with "###" in the scripts and require user-specific values.
 
 
----
+
 
 ## ⚙️ Training Time-R1
 
@@ -132,7 +129,7 @@ This stage trains the model to predict future event times, using the $\theta_1$ 
 *   Script: `scripts/stage2.sh`
 *   This stage uses the $\theta_1$ checkpoint (from Stage 1, Phase 3) as its `BASE_MODEL`.
 
----
+
 
 ## 🔬 Validation (Stage 3 Capability)
 
@@ -151,7 +148,8 @@ The impact of our dynamic reward mechanism is illustrated below. The blue curve 
 
 <div align="center">
 
-![](figures/Stage1_result.png)
+<img src="figures/Stage1_result.png" width="90%"/>
+
 *Figure: Training curves for Stage 1. Blue: Time-R1 with 3-phase dynamic rewards. Red: Ablation without dynamic reward design.*
 </div>
 
@@ -162,8 +160,8 @@ The $\theta_2$ model, after being trained in Stage 2, demonstrates strong capabi
 
 <!-- ![](figures/Stage2_result.png)
 ![](figures/Stage3_result.png) -->
-<img src="figures/Stage2_result.png" alt="Stage 2 Results" width="98%" style="display: block; margin-left: auto; margin-right: auto; margin-bottom: 22px;"/>
-<img src="figures/Stage3_result.png" alt="Stage 3 Results" width="98%" style="display: block; margin-left: auto; margin-right: auto;"/>
+<img src="figures/Stage2_result.png" alt="Stage 2 Results" width="90%" style="display: block; margin-left: auto; margin-right: auto; margin-bottom: 25px;"/>
+<img src="figures/Stage3_result.png" alt="Stage 3 Results" width="90%" style="display: block; margin-left: auto; margin-right: auto;"/>
   
 
 *Figure: Performance comparison for future prediction (Stage 2) and creative generation (Stage 3).*
