@@ -19,8 +19,8 @@ import os
 from verl import DataProto
 import torch
 import json
-from verl.utils.reward_score import gsm8k, math, multiply, countdown, news, time_reasoning, time_prediction
-from verl.trainer.ppo.ray_trainer import RayPPOTrainer
+from verl.utils.reward_score import gsm8k, math, multiply, countdown, news, time_prediction
+from verl.trainer.ppo.ray_trainer_s2 import RayPPOTrainer
 import torch.distributed as dist
 
 # Add in the import section at the top of the file
@@ -46,15 +46,13 @@ def _select_rm_score_fn(data_source):
     elif data_source == 'lighteval/MATH':
         return math.compute_score
     elif data_source == 'new_york_times':
-        return time_reasoning.compute_score
-        # return time_prediction.compute_score
+        return time_prediction.compute_score
     elif "multiply" in data_source or "arithmetic" in data_source:
         return multiply.compute_score
     elif "countdown" in data_source:
         return countdown.compute_score
     else:
         raise NotImplementedError
-
 
 class RewardManager():
     """The reward manager.
@@ -63,9 +61,122 @@ class RewardManager():
     def __init__(self, tokenizer, num_examine) -> None:
         self.tokenizer = tokenizer
         self.num_examine = num_examine  # the number of batches of decoded responses to print to the console
+        # Added: Tracking statistics for prediction tasks
+        self.task_stats = {
+            "time_prediction": {"count": 0, "total_score": 0.0}
+        }
+        self.last_global_step = -1  # Record the global steps of the last processing
+
+    def get_detailed_metrics(self, data: DataProto):
+        """Get detailed reward metrics for verification stage
+        Return reward_tensor and related pred_rewards and task_types"""
+        global_step = data.meta_info.get('global_step', 0)
+
+        reward_tensor = torch.zeros_like(data.batch['responses'], dtype=torch.float32)
+        pred_rewards = []
+        task_types = []
+        
+        # Add month information collection
+        year_month_info = []
+        
+        # Add this line to track the printed data source
+        already_print_data_sources = {}
+        
+        for i in range(len(data)):
+            data_item = data[i]
+            prompt_ids = data_item.batch['prompts']
+            prompt_length = prompt_ids.shape[-1]
+            valid_prompt_length = data_item.batch['attention_mask'][:prompt_length].sum()
+            valid_prompt_ids = prompt_ids[-valid_prompt_length:]
+            
+            response_ids = data_item.batch['responses']
+            valid_response_length = data_item.batch['attention_mask'][prompt_length:].sum()
+            valid_response_ids = response_ids[:valid_response_length]
+            
+            # Decode the complete sequence for printing
+            sequences = torch.cat((valid_prompt_ids, valid_response_ids))
+            sequences_str = self.tokenizer.decode(sequences)
+            
+            response_str = "<think>" + self.tokenizer.decode(valid_response_ids)
+            
+            ground_truth = data_item.non_tensor_batch['reward_model']['ground_truth']
+            data_source = data_item.non_tensor_batch['data_source']
+            compute_score_fn = _select_rm_score_fn(data_source)
+            
+            # Extract task type and month information
+            extra_info = data_item.non_tensor_batch.get('extra_info', {})
+            task_type = "time_prediction"
+            
+            # Get Month Information
+            year = extra_info.get('year', None)
+            month = extra_info.get('month', None)
+            if year is not None and month is not None:
+                year_month_info.append(f"{year}-{month:02d}")
+            else:
+                year_month_info.append("unknown")
+            
+            # Merge task types to ground_truth
+            if task_type and isinstance(ground_truth, dict):
+                ground_truth = ground_truth.copy()
+                ground_truth['task'] = task_type
+                ground_truth['global_step'] = global_step
+            
+            # Get complete rating information
+            score, pred_reward, format_bonus, tag_format_score, tag_count_score, _, detected_task = compute_score_fn(
+                solution_str=response_str, 
+                ground_truth=ground_truth
+            )
+
+            # Add to test set log
+            log_data = {
+                "sequences_str": sequences_str,
+                "ground_truth": ground_truth,
+                "total_score": score,
+                "pred_reward": pred_reward,
+                "format_bonus": format_bonus,
+                "tag_format_score": tag_format_score,
+                "tag_count_score": tag_count_score,
+                "task_type": detected_task,
+                "is_validation": True,
+                "global_step": global_step,
+                "year_month": year_month_info[-1]
+            }
+            
+            # Write to a special verification log file
+            with open("Time-R1/output_log/validation_prediction_output.jsonl", "a", encoding="utf-8") as f:  # path to your log file
+                f.write(json.dumps(log_data, ensure_ascii=False, cls=NumpyEncoder) + "\n")
+            
+            # Add verification sample printing logic
+            if data_source not in already_print_data_sources:
+                already_print_data_sources[data_source] = 0
+                
+            if already_print_data_sources[data_source] < self.num_examine:
+                already_print_data_sources[data_source] += 1
+                print("\n===== VALIDATION EXAMPLE =====")
+                print(sequences_str, f'\nground_truth: {ground_truth}', 
+                    f'total_score: {score}', f'VAL task: {task_type}', 
+                    f'pred: {pred_reward}', f'format: {format_bonus}', 
+                    f'tag_format: {tag_format_score}', f'tag_count: {tag_count_score}')
+            
+            reward_tensor[i, valid_response_length - 1] = score
+            pred_rewards.append(pred_reward)
+            task_types.append(detected_task)
+        
+        return {
+            'reward_tensor': reward_tensor,
+            'pred_rewards': pred_rewards,
+            'task_types': task_types,
+            'year_month_info': year_month_info
+        }
 
     def __call__(self, data: DataProto):
         """We will expand this function gradually based on the available datasets"""
+        # Print step information only when steps change
+        global_step = data.meta_info.get('global_step', 0)
+        if global_step != self.last_global_step:
+            self.last_global_step = global_step
+            if global_step % 5 == 0 or global_step == 1:
+                print(f"Global Steps {global_step}")
 
         # If there is rm score, we directly return rm score. Otherwise, we compute via rm_score_fn
         if 'rm_scores' in data.batch.keys():
@@ -73,15 +184,16 @@ class RewardManager():
 
         reward_tensor = torch.zeros_like(data.batch['responses'], dtype=torch.float32)
 
+        # Collect task type information and predict rewards
+        task_types = []
+        pred_rewards = []
         already_print_data_sources = {}
 
         for i in range(len(data)):
-            data_item = data[i]  # DataProtoItem
+            data_item = data[i]
 
             prompt_ids = data_item.batch['prompts']
-
             prompt_length = prompt_ids.shape[-1]
-
             valid_prompt_length = data_item.batch['attention_mask'][:prompt_length].sum()
             valid_prompt_ids = prompt_ids[-valid_prompt_length:]
 
@@ -101,19 +213,65 @@ class RewardManager():
             data_source = data_item.non_tensor_batch['data_source']
             compute_score_fn = _select_rm_score_fn(data_source)
 
-            # score = compute_score_fn(solution_str=sequences_str, ground_truth=ground_truth)
-            score, pred_reward, format_bonus, tag_format_score, tag_count_score = compute_score_fn(solution_str=response_str, ground_truth=ground_truth)    # only use response_str
+            # Extract task type information
+            extra_info = data_item.non_tensor_batch.get('extra_info', {})
+            task_type = "time_prediction"
+            
+            # Key modification: Merge extra_info into ground_truth
+            if task_type and isinstance(ground_truth, dict):
+                ground_truth = ground_truth.copy()
+                ground_truth['task'] = task_type
+                ground_truth['global_step'] = global_step
+
+            # Select the appropriate scoring function
+            score, pred_reward, format_bonus, tag_format_score, tag_count_score, _, detected_task = compute_score_fn(
+                solution_str=response_str, 
+                ground_truth=ground_truth
+            )
+            
+            # Record task type
+            task_types.append(detected_task)
+            pred_rewards.append(pred_reward)
+            
+            # Update task statistics
+            if detected_task in self.task_stats:
+                self.task_stats[detected_task]["count"] += 1
+                self.task_stats[detected_task]["total_score"] += score
+            
             reward_tensor[i, valid_response_length - 1] = score
+
+            # Save print information as JSONL
+            log_data = {
+                "sequences_str": sequences_str,
+                "ground_truth": ground_truth,
+                "total_score": score,
+                "pred_reward": pred_reward,
+                "format_bonus": format_bonus,
+                "tag_format_score": tag_format_score,
+                "tag_count_score": tag_count_score,
+                "task_type": detected_task,
+                "global_step": global_step
+            }
+
+            with open("Time-R1/output_log/prediction_output.jsonl", "a", encoding="utf-8") as f:  # path to your log file
+                f.write(json.dumps(log_data, ensure_ascii=False, cls=NumpyEncoder) + "\n")
 
             if data_source not in already_print_data_sources:
                 already_print_data_sources[data_source] = 0
 
             if already_print_data_sources[data_source] < self.num_examine:
                 already_print_data_sources[data_source] += 1
-                print(sequences_str, f'\nground_truth: {ground_truth}', f'total_score: {score}', f'pred: {pred_reward}', f'format: {format_bonus}', f'tag_format: {tag_format_score}', f'tag_count: {tag_count_score}')
+                print(sequences_str, f'\nground_truth: {ground_truth}', 
+                      f'total_score: {score}', f'task: {task_type}', 
+                      f'pred: {pred_reward}', f'format: {format_bonus}', 
+                      f'tag_format: {tag_format_score}', f'tag_count: {tag_count_score}')
 
+        # Add task type to the meta_info of data
+        data.meta_info['task_types'] = task_types
+        data.meta_info['pred_rewards'] = pred_rewards
 
         return reward_tensor
+
 
 
 import ray

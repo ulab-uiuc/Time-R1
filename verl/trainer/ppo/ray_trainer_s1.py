@@ -175,20 +175,16 @@ def _compute_response_info(batch):
         response_length=response_length,
     )
 
-
 def compute_data_metrics(batch, use_critic=True):
-    # TODO: add response length
+    """Calculate training indicators, and only the necessary statistics for the time_prediction task are retained"""
     sequence_score = batch.batch['token_level_scores'].sum(-1)
-    sequence_reward = batch.batch['token_level_rewards'].sum(-1)
 
     advantages = batch.batch['advantages']
     returns = batch.batch['returns']
 
     max_response_length = batch.batch['responses'].shape[-1]
-
     prompt_mask = batch.batch['attention_mask'][:, :-max_response_length].bool()
     response_mask = batch.batch['attention_mask'][:, -max_response_length:].bool()
-
     max_prompt_length = prompt_mask.size(-1)
 
     response_info = _compute_response_info(batch)
@@ -198,70 +194,331 @@ def compute_data_metrics(batch, use_critic=True):
     valid_adv = torch.masked_select(advantages, response_mask)
     valid_returns = torch.masked_select(returns, response_mask)
 
+    # Only the necessary Critic metrics are retained
+    metrics = {
+        'critic/advantages/mean': torch.mean(valid_adv).detach().item(),
+        'critic/advantages/max': torch.max(valid_adv).detach().item(),
+        'critic/advantages/min': torch.min(valid_adv).detach().item(),
+        'critic/returns/mean': torch.mean(valid_returns).detach().item(),
+        'critic/returns/max': torch.max(valid_returns).detach().item(),
+        'critic/returns/min': torch.min(valid_returns).detach().item(),
+    }
+    
+    # Add Values-related metrics (if using critical)
     if use_critic:
         values = batch.batch['values']
         valid_values = torch.masked_select(values, response_mask)
         return_diff_var = torch.var(valid_returns - valid_values)
         return_var = torch.var(valid_returns)
-
-    metrics = {
-        # score
-        'critic/score/mean':
-            torch.mean(sequence_score).detach().item(),
-        'critic/score/max':
-            torch.max(sequence_score).detach().item(),
-        'critic/score/min':
-            torch.min(sequence_score).detach().item(),
-        # reward
-        'critic/rewards/mean':
-            torch.mean(sequence_reward).detach().item(),
-        'critic/rewards/max':
-            torch.max(sequence_reward).detach().item(),
-        'critic/rewards/min':
-            torch.min(sequence_reward).detach().item(),
-        # adv
-        'critic/advantages/mean':
-            torch.mean(valid_adv).detach().item(),
-        'critic/advantages/max':
-            torch.max(valid_adv).detach().item(),
-        'critic/advantages/min':
-            torch.min(valid_adv).detach().item(),
-        # returns
-        'critic/returns/mean':
-            torch.mean(valid_returns).detach().item(),
-        'critic/returns/max':
-            torch.max(valid_returns).detach().item(),
-        'critic/returns/min':
-            torch.min(valid_returns).detach().item(),
-        **({
-            # values
+        
+        metrics.update({
             'critic/values/mean': torch.mean(valid_values).detach().item(),
             'critic/values/max': torch.max(valid_values).detach().item(),
             'critic/values/min': torch.min(valid_values).detach().item(),
-            # vf explained var
             'critic/vf_explained_var': (1.0 - return_diff_var / (return_var + 1e-5)).detach().item(),
-        } if use_critic else {}),
+        })
+    
+    # Only keep the statistics of time_prediction tasks
+    task_type = "time_prediction"
+    
+    # Record rewards data directly under the time_prediction category
+    metrics.update({
+        f'rewards/{task_type}/overall_reward_mean': torch.mean(sequence_score).detach().item(),
+        f'rewards/{task_type}/overall_reward_max': torch.max(sequence_score).detach().item(),
+        f'rewards/{task_type}/overall_reward_min': torch.min(sequence_score).detach().item(),
+    })
 
-        # response length
-        'response_length/mean':
-            torch.mean(response_length).detach().item(),
-        'response_length/max':
-            torch.max(response_length).detach().item(),
-        'response_length/min':
-            torch.min(response_length).detach().item(),
-        'response_length/clip_ratio':
-            torch.mean(torch.eq(response_length, max_response_length).float()).detach().item(),
-        # prompt length
-        'prompt_length/mean':
-            torch.mean(prompt_length).detach().item(),
-        'prompt_length/max':
-            torch.max(prompt_length).detach().item(),
-        'prompt_length/min':
-            torch.min(prompt_length).detach().item(),
-        'prompt_length/clip_ratio':
-            torch.mean(torch.eq(prompt_length, max_prompt_length).float()).detach().item(),
-    }
+    # Add pred_reward metric
+    if hasattr(batch, 'meta_info') and 'pred_rewards' in batch.meta_info:
+        all_pred_rewards = torch.tensor(batch.meta_info['pred_rewards'])
+        metrics.update({
+            f'rewards/{task_type}/pred_reward_mean': torch.mean(all_pred_rewards).item(),
+            f'rewards/{task_type}/pred_reward_max': torch.max(all_pred_rewards).item(),
+            f'rewards/{task_type}/pred_reward_min': torch.min(all_pred_rewards).item(),
+        })
+    
+    # Length statistics are only for time_prediction tasks
+    metrics.update({
+        f'response_length/{task_type}/mean': torch.mean(response_length).detach().item(),
+        f'response_length/{task_type}/max': torch.max(response_length).detach().item(),
+        f'response_length/{task_type}/min': torch.min(response_length).detach().item(),
+        f'response_length/{task_type}/clip_ratio': torch.mean(torch.eq(response_length, max_response_length).float()).detach().item(),
+        
+        f'prompt_length/{task_type}/mean': torch.mean(prompt_length).detach().item(),
+        f'prompt_length/{task_type}/max': torch.max(prompt_length).detach().item(),
+        f'prompt_length/{task_type}/min': torch.min(prompt_length).detach().item(),
+        f'prompt_length/{task_type}/clip_ratio': torch.mean(torch.eq(prompt_length, max_prompt_length).float()).detach().item(),
+    })
+    
     return metrics
+
+def compute_data_metrics_time_reasoning(batch, use_critic=True):
+    """Calculate training metrics, including independent statistics for each task type"""
+    sequence_score = batch.batch['token_level_scores'].sum(-1)
+    sequence_reward = batch.batch['token_level_rewards'].sum(-1)
+
+    advantages = batch.batch['advantages']
+    returns = batch.batch['returns']
+
+    max_response_length = batch.batch['responses'].shape[-1]
+    prompt_mask = batch.batch['attention_mask'][:, :-max_response_length].bool()
+    response_mask = batch.batch['attention_mask'][:, -max_response_length:].bool()
+    max_prompt_length = prompt_mask.size(-1)
+
+    response_info = _compute_response_info(batch)
+    prompt_length = response_info['prompt_length']
+    response_length = response_info['response_length']
+
+    valid_adv = torch.masked_select(advantages, response_mask)
+    valid_returns = torch.masked_select(returns, response_mask)
+
+    # Critic Partial Indicators - Keep key assessment indicators, but remove rewards-related indicators
+    metrics = {
+        # Keep Critic core metrics
+        'critic/advantages/mean': torch.mean(valid_adv).detach().item(),
+        'critic/advantages/max': torch.max(valid_adv).detach().item(),
+        'critic/advantages/min': torch.min(valid_adv).detach().item(),
+        'critic/returns/mean': torch.mean(valid_returns).detach().item(),
+        'critic/returns/max': torch.max(valid_returns).detach().item(),
+        'critic/returns/min': torch.min(valid_returns).detach().item(),
+    }
+    
+    # Move score-related metrics to rewards category
+    metrics.update({
+        'rewards/overall/mean': torch.mean(sequence_score).detach().item(),
+        'rewards/overall/max': torch.max(sequence_score).detach().item(),
+        'rewards/overall/min': torch.min(sequence_score).detach().item(),
+    })
+
+    # Add the pred_reward and consistency_penalty metrics of overall
+    if hasattr(batch, 'meta_info'):
+        # Add pred_reward metric to overall
+        if 'pred_rewards' in batch.meta_info:
+            all_pred_rewards = torch.tensor(batch.meta_info['pred_rewards'])
+            metrics.update({
+                'rewards/overall/pred_reward_mean': torch.mean(all_pred_rewards).item(),
+                'rewards/overall/pred_reward_max': torch.max(all_pred_rewards).item(),
+                'rewards/overall/pred_reward_min': torch.min(all_pred_rewards).item(),
+            })
+        
+        # Add consistency_penalty metrics for overall
+        if 'consistency_penalties' in batch.meta_info:
+            all_consistency_penalties = torch.tensor(batch.meta_info['consistency_penalties'])
+            metrics.update({
+                'rewards/overall/consistency_penalty_mean': torch.mean(all_consistency_penalties).item(),
+                'rewards/overall/consistency_penalty_max': torch.max(all_consistency_penalties).item(),
+                'rewards/overall/consistency_penalty_min': torch.min(all_consistency_penalties).item(),
+            })
+    
+    # Add Values-related metrics (if using critical)
+    if use_critic:
+        values = batch.batch['values']
+        valid_values = torch.masked_select(values, response_mask)
+        return_diff_var = torch.var(valid_returns - valid_values)
+        return_var = torch.var(valid_returns)
+        
+        metrics.update({
+            'critic/values/mean': torch.mean(valid_values).detach().item(),
+            'critic/values/max': torch.max(valid_values).detach().item(),
+            'critic/values/min': torch.min(valid_values).detach().item(),
+            'critic/vf_explained_var': (1.0 - return_diff_var / (return_var + 1e-5)).detach().item(),
+        })
+
+    # Overall length statistics
+    metrics.update({
+        'response_length/overall/mean': torch.mean(response_length).detach().item(),
+        'response_length/overall/max': torch.max(response_length).detach().item(),
+        'response_length/overall/min': torch.min(response_length).detach().item(),
+        'response_length/overall/clip_ratio': torch.mean(torch.eq(response_length, max_response_length).float()).detach().item(),
+        
+        'prompt_length/overall/mean': torch.mean(prompt_length).detach().item(),
+        'prompt_length/overall/max': torch.max(prompt_length).detach().item(),
+        'prompt_length/overall/min': torch.min(prompt_length).detach().item(),
+        'prompt_length/overall/clip_ratio': torch.mean(torch.eq(prompt_length, max_prompt_length).float()).detach().item(),
+    })
+    
+    # Separate metric statistics by task type
+    if hasattr(batch, 'meta_info') and 'task_types' in batch.meta_info:
+        task_types = batch.meta_info['task_types']
+        unique_tasks = set(task_types)
+        
+        # Pre-calculate some dictionaries that may be required
+        reward_components = {}
+        format_components = {}
+        consistency_penalties = {}
+        
+        # If this information is available in meta_info
+        if 'pred_rewards' in batch.meta_info:
+            pred_rewards = batch.meta_info['pred_rewards']
+            for i, task in enumerate(task_types):
+                if task not in reward_components:
+                    reward_components[task] = []
+                reward_components[task].append(pred_rewards[i])
+                
+        # if 'format_bonuses' in batch.meta_info:
+        #     format_bonuses = batch.meta_info['format_bonuses']
+        #     for i, task in enumerate(task_types):
+        #         if task not in format_components:
+        #             format_components[task] = []
+        #         format_components[task].append(format_bonuses[i])
+                
+        if 'consistency_penalties' in batch.meta_info:
+            consistency_penalties_list = batch.meta_info['consistency_penalties']
+            for i, task in enumerate(task_types):
+                if task not in consistency_penalties:
+                    consistency_penalties[task] = []
+                consistency_penalties[task].append(consistency_penalties_list[i])
+        
+        # Statistics metrics for each task type
+        for task in unique_tasks:
+            task_indices = [i for i, t in enumerate(task_types) if t == task]
+            if not task_indices:
+                continue
+                
+            task_indices_tensor = torch.tensor(task_indices)
+            
+            # Reward points for this task
+            task_scores = sequence_score[task_indices_tensor]
+            
+            # The response length of the task
+            task_resp_len = response_length[task_indices_tensor]
+            
+            # Tips length for this task
+            task_prompt_len = prompt_length[task_indices_tensor]
+            
+            # Add reward metrics for classified tasks
+            metrics.update({
+                f'rewards/{task}/mean': torch.mean(task_scores).detach().item(),
+                f'rewards/{task}/max': torch.max(task_scores).detach().item(),
+                f'rewards/{task}/min': torch.min(task_scores).detach().item(),
+            })
+            
+            # Add a length metric for classification tasks
+            metrics.update({
+                f'response_length/{task}/mean': torch.mean(task_resp_len).detach().item(),
+                f'response_length/{task}/max': torch.max(task_resp_len).detach().item(),
+                f'response_length/{task}/min': torch.min(task_resp_len).detach().item(),
+                
+                f'prompt_length/{task}/mean': torch.mean(task_prompt_len).detach().item(),
+                f'prompt_length/{task}/max': torch.max(task_prompt_len).detach().item(),
+                f'prompt_length/{task}/min': torch.min(task_prompt_len).detach().item(),
+            })
+            
+            # Add a predictive reward component (if available)
+            if task in reward_components and reward_components[task]:
+                task_pred_rewards = torch.tensor(reward_components[task])
+                metrics.update({
+                    f'rewards/{task}/pred_reward_mean': torch.mean(task_pred_rewards).item(),
+                    f'rewards/{task}/pred_reward_max': torch.max(task_pred_rewards).item(),
+                    f'rewards/{task}/pred_reward_min': torch.min(task_pred_rewards).item(),
+                })
+                
+            # # Add a format reward component (if available)
+            # if task in format_components and format_components[task]:
+            #     task_format_bonuses = torch.tensor(format_components[task])
+            #     metrics.update({
+            #         f'rewards/{task}/format_bonus_mean': torch.mean(task_format_bonuses).item(),
+            #         f'rewards/{task}/format_bonus_max': torch.max(task_format_bonuses).item(),
+            #         f'rewards/{task}/format_bonus_min': torch.min(task_format_bonuses).item(),
+            #     })
+                
+            # Add consistency penalty component (if available)
+            if task in consistency_penalties and consistency_penalties[task]:
+                task_consistency = torch.tensor(consistency_penalties[task])
+                metrics.update({
+                    f'rewards/{task}/consistency_penalty_mean': torch.mean(task_consistency).item(),
+                    f'rewards/{task}/consistency_penalty_max': torch.max(task_consistency).item(),
+                    f'rewards/{task}/consistency_penalty_min': torch.min(task_consistency).item(),
+                })
+    
+    return metrics
+
+# def compute_data_metrics(batch, use_critic=True):
+#     # TODO: add response length
+#     sequence_score = batch.batch['token_level_scores'].sum(-1)
+#     sequence_reward = batch.batch['token_level_rewards'].sum(-1)
+
+#     advantages = batch.batch['advantages']
+#     returns = batch.batch['returns']
+
+#     max_response_length = batch.batch['responses'].shape[-1]
+
+#     prompt_mask = batch.batch['attention_mask'][:, :-max_response_length].bool()
+#     response_mask = batch.batch['attention_mask'][:, -max_response_length:].bool()
+
+#     max_prompt_length = prompt_mask.size(-1)
+
+#     response_info = _compute_response_info(batch)
+#     prompt_length = response_info['prompt_length']
+#     response_length = response_info['response_length']
+
+#     valid_adv = torch.masked_select(advantages, response_mask)
+#     valid_returns = torch.masked_select(returns, response_mask)
+
+#     if use_critic:
+#         values = batch.batch['values']
+#         valid_values = torch.masked_select(values, response_mask)
+#         return_diff_var = torch.var(valid_returns - valid_values)
+#         return_var = torch.var(valid_returns)
+
+#     metrics = {
+#         # score
+#         'critic/score/mean':
+#             torch.mean(sequence_score).detach().item(),
+#         'critic/score/max':
+#             torch.max(sequence_score).detach().item(),
+#         'critic/score/min':
+#             torch.min(sequence_score).detach().item(),
+#         # reward
+#         'critic/rewards/mean':
+#             torch.mean(sequence_reward).detach().item(),
+#         'critic/rewards/max':
+#             torch.max(sequence_reward).detach().item(),
+#         'critic/rewards/min':
+#             torch.min(sequence_reward).detach().item(),
+#         # adv
+#         'critic/advantages/mean':
+#             torch.mean(valid_adv).detach().item(),
+#         'critic/advantages/max':
+#             torch.max(valid_adv).detach().item(),
+#         'critic/advantages/min':
+#             torch.min(valid_adv).detach().item(),
+#         # returns
+#         'critic/returns/mean':
+#             torch.mean(valid_returns).detach().item(),
+#         'critic/returns/max':
+#             torch.max(valid_returns).detach().item(),
+#         'critic/returns/min':
+#             torch.min(valid_returns).detach().item(),
+#         **({
+#             # values
+#             'critic/values/mean': torch.mean(valid_values).detach().item(),
+#             'critic/values/max': torch.max(valid_values).detach().item(),
+#             'critic/values/min': torch.min(valid_values).detach().item(),
+#             # vf explained var
+#             'critic/vf_explained_var': (1.0 - return_diff_var / (return_var + 1e-5)).detach().item(),
+#         } if use_critic else {}),
+
+#         # response length
+#         'response_length/mean':
+#             torch.mean(response_length).detach().item(),
+#         'response_length/max':
+#             torch.max(response_length).detach().item(),
+#         'response_length/min':
+#             torch.min(response_length).detach().item(),
+#         'response_length/clip_ratio':
+#             torch.mean(torch.eq(response_length, max_response_length).float()).detach().item(),
+#         # prompt length
+#         'prompt_length/mean':
+#             torch.mean(prompt_length).detach().item(),
+#         'prompt_length/max':
+#             torch.max(prompt_length).detach().item(),
+#         'prompt_length/min':
+#             torch.min(prompt_length).detach().item(),
+#         'prompt_length/clip_ratio':
+#             torch.mean(torch.eq(prompt_length, max_prompt_length).float()).detach().item(),
+#     }
+#     return metrics
 
 
 def compute_timing_metrics(batch, timing_raw):
@@ -422,18 +679,17 @@ class RayPPOTrainer(object):
             self.config.actor_rollout_ref.actor.optim.total_training_steps = total_training_steps
             self.config.critic.optim.total_training_steps = total_training_steps
 
-
     def _validate(self):
+        """Enhanced validation evaluation method, adding monthly statistics and response length statistics"""
         reward_tensor_lst = []
-        data_source_lst = []
+        pred_reward_lst = []
+        year_month_lst = []
+        response_length_lst = []  # Add response length collection
+        
         for test_data in self.val_dataloader:
             test_batch = DataProto.from_single_dict(test_data)
-            # test_batch = test_batch.to('cuda')
-
-            # we only do validation on rule-based rm
-            if self.config.reward_model.enable and test_batch[0].non_tensor_batch['reward_model']['style'] == 'model':
-                return {}
-
+            
+            # Verification generation and evaluation process
             test_gen_batch = test_batch.pop(['input_ids', 'attention_mask', 'position_ids'])
             test_gen_batch.meta_info = {
                 'eos_token_id': self.tokenizer.eos_token_id,
@@ -442,38 +698,238 @@ class RayPPOTrainer(object):
                 'do_sample': False,
                 'validate': True,
             }
-
-            # pad to be divisible by dp_size
+            
             test_gen_batch_padded, pad_size = pad_dataproto_to_divisor(test_gen_batch, self.actor_rollout_wg.world_size)
             test_output_gen_batch_padded = self.actor_rollout_wg.generate_sequences(test_gen_batch_padded)
-            # unpad
             test_output_gen_batch = unpad_dataproto(test_output_gen_batch_padded, pad_size=pad_size)
-            print('validation generation end')
-
             test_batch = test_batch.union(test_output_gen_batch)
-
-            # evaluate using reward_function
-            # for certain reward function (e.g. sandbox), the generation can overlap with reward
-            reward_tensor = self.val_reward_fn(test_batch)
-
+            
+            # Calculate the response length
+            response_info = _compute_response_info(test_batch)
+            response_length_lst.append(response_info['response_length'])
+            
+            # Obtain detailed evaluation results
+            test_batch.meta_info['global_step'] = self.global_steps
+            reward_details = self.val_reward_fn.get_detailed_metrics(test_batch)
+            reward_tensor = reward_details['reward_tensor']
+            pred_rewards = reward_details.get('pred_rewards', [0.0] * reward_tensor.shape[0])
+            year_month_info = reward_details.get('year_month_info', ['unknown'] * reward_tensor.shape[0])
+            
             reward_tensor_lst.append(reward_tensor)
-            data_source_lst.append(test_batch.non_tensor_batch.get('data_source', ['unknown'] * reward_tensor.shape[0]))
+            pred_reward_lst.append(pred_rewards)
+            year_month_lst.append(year_month_info)
 
+        # Merge the results of all batches
+        reward_tensor = torch.cat(reward_tensor_lst, dim=0).sum(-1).cpu()  # (batch_size,)
+        pred_rewards = np.concatenate(pred_reward_lst, axis=0)
+        year_month_info = np.concatenate(year_month_lst, axis=0)
+        response_length = torch.cat(response_length_lst, dim=0).cpu()  # Merge all response lengths
+        
+        # Overall results statistics
+        metric_dict = {
+            'val/time_prediction/overall_reward': np.mean(reward_tensor.numpy()),
+            'val/time_prediction/pred_reward': np.mean(pred_rewards),
+            # Add response length statistics
+            'response_length/time_prediction/val_mean': torch.mean(response_length).item(),
+            'response_length/time_prediction/val_max': torch.max(response_length).item(),
+            'response_length/time_prediction/val_min': torch.min(response_length).item(),
+            # More response length statistics can be added
+            'response_length/time_prediction/val_median': torch.median(response_length).item(),
+        }
+        
+        # Group statistics by month
+        month_rewards = {}
+        month_pred_rewards = {}
+        month_response_lengths = {}  # Add response length statistics by month
+        
+        for i in range(len(reward_tensor)):
+            month = year_month_info[i]
+            if month not in month_rewards:
+                month_rewards[month] = []
+                month_pred_rewards[month] = []
+                month_response_lengths[month] = []
+            
+            month_rewards[month].append(reward_tensor[i].item())
+            month_pred_rewards[month].append(pred_rewards[i])
+            month_response_lengths[month].append(response_length[i].item())
+        
+        # Add metrics based on month statistics
+        for month in sorted(month_rewards.keys()):
+            if month != "unknown":
+                metric_dict[f'val/time_prediction/overall_reward_{month}'] = np.mean(month_rewards[month])
+                metric_dict[f'val/time_prediction/pred_reward_{month}'] = np.mean(month_pred_rewards[month])
+                # Add monthly response length statistics
+                metric_dict[f'response_length/time_prediction/val_mean_{month}'] = np.mean(month_response_lengths[month])
+        
+        # Print statistical results
+        print(f"\n===== VALIDATION RESULTS (Step {self.global_steps}) =====")
+        print(f"Overall: score={metric_dict['val/time_prediction/overall_reward']:.4f}, pred_reward={metric_dict['val/time_prediction/pred_reward']:.4f}")
+        
+        for month in sorted(month_rewards.keys()):
+            if month != "unknown":
+                # print(f"Month {month}: score={np.mean(month_rewards[month]):.4f}, pred_reward={np.mean(month_pred_rewards[month]):.4f}, samples={len(month_rewards[month])}")
+                print(f"Month {month}: score={np.mean(month_rewards[month]):.4f}, pred_reward={np.mean(month_pred_rewards[month]):.4f}")        
+        # Save the result to a separate file
+        validation_summary = {
+            "global_step": self.global_steps,
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "overall_metrics": {
+                "overall_reward": float(metric_dict['val/time_prediction/overall_reward']),
+                "pred_reward": float(metric_dict['val/time_prediction/pred_reward']),
+                "sample_count": len(reward_tensor)
+            },
+            "monthly_metrics": {}
+        }
+        
+        for month in sorted(month_rewards.keys()):
+            if month != "unknown":
+                validation_summary["monthly_metrics"][month] = {
+                    "overall_reward": float(np.mean(month_rewards[month])),
+                    "pred_reward": float(np.mean(month_pred_rewards[month])),
+                    "sample_count": len(month_rewards[month])
+                }
+        
+        # Save verification statistics results
+        with open("Time-R1/output_log/test_summary_prediction.jsonl", "a", encoding="utf-8") as f:  # Specify the path to save
+            f.write(json.dumps(validation_summary, ensure_ascii=False) + "\n")
+        
+        return metric_dict
+    
+
+    def _validate_time_reasoning(self):
+        """Enhanced validation evaluation method, adding task type analysis and more metrics"""
+        reward_tensor_lst = []
+        data_source_lst = []
+        pred_reward_lst = []
+        task_type_lst = []
+        
+        for test_data in self.val_dataloader:
+            test_batch = DataProto.from_single_dict(test_data)
+            
+            # Verification generation and evaluation process - the original code remains the same
+            test_gen_batch = test_batch.pop(['input_ids', 'attention_mask', 'position_ids'])
+            test_gen_batch.meta_info = {
+                'eos_token_id': self.tokenizer.eos_token_id,
+                'pad_token_id': self.tokenizer.pad_token_id,
+                'recompute_log_prob': False,
+                'do_sample': False,
+                'validate': True,
+            }
+            
+            test_gen_batch_padded, pad_size = pad_dataproto_to_divisor(test_gen_batch, self.actor_rollout_wg.world_size)
+            test_output_gen_batch_padded = self.actor_rollout_wg.generate_sequences(test_gen_batch_padded)
+            test_output_gen_batch = unpad_dataproto(test_output_gen_batch_padded, pad_size=pad_size)
+            test_batch = test_batch.union(test_output_gen_batch)
+            
+            # Obtain detailed evaluation results, including sub-item indicators
+            test_batch.meta_info['global_step'] = self.global_steps
+            reward_details = self.val_reward_fn.get_detailed_metrics(test_batch)
+            reward_tensor = reward_details['reward_tensor']
+            pred_rewards = reward_details.get('pred_rewards', [0.0] * reward_tensor.shape[0])
+            task_types = reward_details.get('task_types', ['unknown'] * reward_tensor.shape[0])
+            
+            reward_tensor_lst.append(reward_tensor)
+            data_source_lst.append(test_batch.non_tensor_batch.get('ability', ['unknown'] * reward_tensor.shape[0]))
+            pred_reward_lst.append(pred_rewards)
+            task_type_lst.append(task_types)
+
+        # Merge the results of all batches
         reward_tensor = torch.cat(reward_tensor_lst, dim=0).sum(-1).cpu()  # (batch_size,)
         data_sources = np.concatenate(data_source_lst, axis=0)
-        # evaluate test_score based on data source
+        pred_rewards = np.concatenate(pred_reward_lst, axis=0)
+        task_types = np.concatenate(task_type_lst, axis=0)
+        
+        # Statistics metrics by data source
         data_source_reward = {}
+        data_source_pred_reward = {}
+        
         for i in range(reward_tensor.shape[0]):
             data_source = data_sources[i]
             if data_source not in data_source_reward:
                 data_source_reward[data_source] = []
+                data_source_pred_reward[data_source] = []
             data_source_reward[data_source].append(reward_tensor[i].item())
+            data_source_pred_reward[data_source].append(pred_rewards[i])
 
+        # Generate indicator dictionary
         metric_dict = {}
+        
+        # Add metrics by data source
         for data_source, rewards in data_source_reward.items():
-            metric_dict[f'val/test_score/{data_source}'] = np.mean(rewards)
+            # metric_dict[f'val/test_score/{data_source}'] = np.mean(rewards)
+            # metric_dict[f'val/pred_reward/{data_source}'] = np.mean(data_source_pred_reward[data_source])
+            metric_dict[f'val/test_score_overall'] = np.mean(rewards)
+            metric_dict[f'val/pred_reward_overall'] = np.mean(data_source_pred_reward[data_source])
+        
+        # Add metrics by task type
+        task_rewards = {}
+        task_pred_rewards = {}
+        
+        for i in range(reward_tensor.shape[0]):
+            task = task_types[i]
+            if task not in task_rewards:
+                task_rewards[task] = []
+                task_pred_rewards[task] = []
+            task_rewards[task].append(reward_tensor[i].item())
+            task_pred_rewards[task].append(pred_rewards[i])
+        
+        for task, rewards in task_rewards.items():
+            metric_dict[f'val/test_score_{task}'] = np.mean(rewards)
+            metric_dict[f'val/pred_reward_{task}'] = np.mean(task_pred_rewards[task])
 
         return metric_dict
+
+    # def _validate(self):
+    #     reward_tensor_lst = []
+    #     data_source_lst = []
+    #     for test_data in self.val_dataloader:
+    #         test_batch = DataProto.from_single_dict(test_data)
+    #         # test_batch = test_batch.to('cuda')
+
+    #         # we only do validation on rule-based rm
+    #         if self.config.reward_model.enable and test_batch[0].non_tensor_batch['reward_model']['style'] == 'model':
+    #             return {}
+
+    #         test_gen_batch = test_batch.pop(['input_ids', 'attention_mask', 'position_ids'])
+    #         test_gen_batch.meta_info = {
+    #             'eos_token_id': self.tokenizer.eos_token_id,
+    #             'pad_token_id': self.tokenizer.pad_token_id,
+    #             'recompute_log_prob': False,
+    #             'do_sample': False,
+    #             'validate': True,
+    #         }
+
+    #         # pad to be divisible by dp_size
+    #         test_gen_batch_padded, pad_size = pad_dataproto_to_divisor(test_gen_batch, self.actor_rollout_wg.world_size)
+    #         test_output_gen_batch_padded = self.actor_rollout_wg.generate_sequences(test_gen_batch_padded)
+    #         # unpad
+    #         test_output_gen_batch = unpad_dataproto(test_output_gen_batch_padded, pad_size=pad_size)
+    #         print('validation generation end')
+
+    #         test_batch = test_batch.union(test_output_gen_batch)
+
+    #         # evaluate using reward_function
+    #         # for certain reward function (e.g. sandbox), the generation can overlap with reward
+    #         reward_tensor = self.val_reward_fn(test_batch)
+
+    #         reward_tensor_lst.append(reward_tensor)
+    #         data_source_lst.append(test_batch.non_tensor_batch.get('data_source', ['unknown'] * reward_tensor.shape[0]))
+
+    #     reward_tensor = torch.cat(reward_tensor_lst, dim=0).sum(-1).cpu()  # (batch_size,)
+    #     data_sources = np.concatenate(data_source_lst, axis=0)
+    #     # evaluate test_score based on data source
+    #     data_source_reward = {}
+    #     for i in range(reward_tensor.shape[0]):
+    #         data_source = data_sources[i]
+    #         if data_source not in data_source_reward:
+    #             data_source_reward[data_source] = []
+    #         data_source_reward[data_source].append(reward_tensor[i].item())
+
+    #     metric_dict = {}
+    #     for data_source, rewards in data_source_reward.items():
+    #         metric_dict[f'val/test_score/{data_source}'] = np.mean(rewards)
+
+    #     return metric_dict
 
     def init_workers(self):
         """Init resource pool and worker group"""
@@ -613,7 +1069,8 @@ class RayPPOTrainer(object):
         # perform validation before training
         # currently, we only support validation using the reward_function.
         if self.val_reward_fn is not None and self.config.trainer.get('val_before_train', True):
-            val_metrics = self._validate()      
+            # val_metrics = self._validate()
+            val_metrics = self._validate_time_reasoning()      
             pprint(f'Initial validation metrics: {val_metrics}')
             logger.log(data=val_metrics, step=self.global_steps)
             if self.config.trainer.get('val_only', False):
@@ -714,7 +1171,8 @@ class RayPPOTrainer(object):
                     if self.val_reward_fn is not None and self.config.trainer.test_freq > 0 and \
                         self.global_steps % self.config.trainer.test_freq == 0:
                         with _timer('testing', timing_raw):
-                            val_metrics: dict = self._validate()
+                            # val_metrics: dict = self._validate()
+                            val_metrics: dict = self._validate_time_reasoning()
                             # logger.log(data=val_metrics, step=self.global_steps)   # print already in _validate
                         metrics.update(val_metrics)
 
@@ -724,7 +1182,8 @@ class RayPPOTrainer(object):
                             self._save_checkpoint()
 
                 # collect metrics  
-                metrics.update(compute_data_metrics(batch=batch, use_critic=self.use_critic))
+                # metrics.update(compute_data_metrics(batch=batch, use_critic=self.use_critic))
+                metrics.update(compute_data_metrics_time_reasoning(batch=batch, use_critic=self.use_critic))
                 metrics.update(compute_timing_metrics(batch=batch, timing_raw=timing_raw))
 
                 # TODO: make a canonical logger that supports various backend
@@ -736,7 +1195,8 @@ class RayPPOTrainer(object):
 
                     # perform validation after training
                     if self.val_reward_fn is not None:
-                        val_metrics = self._validate()
+                        # val_metrics = self._validate()
+                        val_metrics = self._validate_time_reasoning()
                         pprint(f'Final validation metrics: {val_metrics}')
                         logger.log(data=val_metrics, step=self.global_steps)
                     return

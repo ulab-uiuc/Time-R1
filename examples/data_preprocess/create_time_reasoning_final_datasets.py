@@ -4,16 +4,14 @@ import os
 from typing import List, Dict, Any
 
 def random_sample_from_parquet(file_path: str, sample_size: int) -> pd.DataFrame:
-    """
-    从parquet文件中随机抽取指定数量的样本
+    """Randomly extract the specified number of samples from the parquet file
     
-    参数:
-        file_path: parquet文件路径
-        sample_size: 要抽取的样本数量
+    parameter:
+        file_path: parquet file path
+        sample_size: The number of samples to be drawn
         
-    返回:
-        包含随机抽样结果的DataFrame
-    """
+    return:
+        DataFrame containing random sampling results"""
     print(f"Reading {file_path}...")
     df = pd.read_parquet(file_path)
     
@@ -33,15 +31,13 @@ def create_combined_dataset(
     output_file: str,
     shuffle: bool = True
 ) -> None:
-    """
-    从多个任务数据集中抽样并合并为一个综合数据集
+    """Sample from multiple task datasets and merge into one comprehensive dataset
     
-    参数:
-        task_files: 任务名称到数据文件路径的映射
-        sample_sizes: 任务名称到样本数量的映射
-        output_file: 输出文件路径
-        shuffle: 是否打乱最终数据集
-    """
+    parameter:
+        task_files: Mapping of task name to data file path
+        sample_sizes: Map of task name to sample number
+        output_file: output file path
+        shuffle: Whether to disrupt the final dataset"""
     combined_df = pd.DataFrame()
     
     for task_name, file_path in task_files.items():
@@ -52,31 +48,31 @@ def create_combined_dataset(
         sample_size = sample_sizes[task_name]
         sampled_df = random_sample_from_parquet(file_path, sample_size)
         
-        # 记录每个数据集的大小，以便统计
+        # Record the size of each dataset so that it can be counted
         print(f"  - {task_name}: {len(sampled_df)} samples")
         
-        # 合并到总数据集
+        # Merge into total dataset
         combined_df = pd.concat([combined_df, sampled_df], ignore_index=True)
     
-    # 是否打乱数据
+    # Whether to disrupt data
     if shuffle:
         combined_df = combined_df.sample(frac=1.0, random_state=42).reset_index(drop=True)
     
-    # 保存合并后的数据集
+    # Save the merged dataset
     print(f"Saving combined dataset with {len(combined_df)} samples to {output_file}")
     combined_df.to_parquet(output_file, index=False)
     
-    # 打印每种任务在最终数据集中的分布
+    # Print the distribution of each task in the final dataset
     task_counts = combined_df['extra_info'].apply(lambda x: x.get('task', 'unknown')).value_counts()
     print("\nTask distribution in the final dataset:")
     for task, count in task_counts.items():
         print(f"  - {task}: {count} samples ({count/len(combined_df)*100:.2f}%)")
 
 def main():
-    # 数据集根目录
-    dataset_dir = "/data/zliu331/temporal_reasoning/TinyZero/datasets"
+    # Dataset root directory
+    dataset_dir = "Time-R1/datasets"
     
-    # 各子任务训练数据集
+    # Training dataset for each subtask
     train_files = {
         "time_difference": os.path.join(dataset_dir, "train_time_difference.parquet"),
         "time_ordering": os.path.join(dataset_dir, "train_time_ordering.parquet"),
@@ -84,7 +80,7 @@ def main():
         "time_inferring": os.path.join(dataset_dir, "train_time_inferring.parquet")
     }
     
-    # 各子任务测试数据集
+    # Test dataset for each subtask
     test_files = {
         "time_difference": os.path.join(dataset_dir, "test_time_difference.parquet"),
         "time_ordering": os.path.join(dataset_dir, "test_time_ordering.parquet"),
@@ -92,7 +88,7 @@ def main():
         "time_inferring": os.path.join(dataset_dir, "test_time_inferring.parquet")
     }
     
-    # 训练集样本数
+    # Number of samples for training set
     train_samples = {
         "time_difference": 13000,
         "time_ordering": 13000,
@@ -100,7 +96,7 @@ def main():
         "time_inferring": 10000
     }
     
-    # 测试集样本数
+    # Number of samples for test set
     test_samples = {
         "time_difference": 256,
         "time_ordering": 256,
@@ -108,15 +104,15 @@ def main():
         "time_inferring": 256
     }
     
-    # 输出文件路径
+    # Output file path
     train_output = os.path.join(dataset_dir, "train_time_reasoning_combined.parquet")
     test_output = os.path.join(dataset_dir, "test_time_reasoning_combined.parquet")
     
-    # 创建训练集
+    # Create a training set
     print("\n===== Creating Combined Training Dataset =====")
     create_combined_dataset(train_files, train_samples, train_output)
     
-    # 创建测试集
+    # Create a test set
     print("\n===== Creating Combined Test Dataset =====")
     create_combined_dataset(test_files, test_samples, test_output)
     
@@ -126,24 +122,22 @@ def main():
 # import os
 
 def create_time_inferring_easy_dataset():
-    """
-    从train_time_inferring.parquet中提取与train_easy_nyt.parquet匹配的样本，
-    创建train_time_inferring_easy.parquet用于第一阶段训练。
-    """
-    # 文件路径
-    easy_samples_path = "/data/zliu331/temporal_reasoning/TinyZero/datasets/train_easy_nyt.parquet"
-    all_samples_path = "/data/zliu331/temporal_reasoning/TinyZero/datasets/train_time_inferring.parquet"
-    output_path = "/data/zliu331/temporal_reasoning/TinyZero/datasets/train_time_inferring_easy.parquet"
+    """Extract samples that match train_easy_nyt.parquet from train_time_inferring.parquet,
+    Create train_time_inferring_easy.parquet for first-stage training."""
+    # File path
+    easy_samples_path = "Time-R1/datasets/train_easy_nyt.parquet"
+    all_samples_path = "Time-R1/datasets/train_time_inferring.parquet"
+    output_path = "Time-R1/datasets/train_time_inferring_easy.parquet"
     
-    # 加载简单样本数据集
+    # Load simple sample dataset
     easy_df = pd.read_parquet(easy_samples_path)
     
-    # 创建标题和摘要的匹配集
+    # Create a matching set of titles and summary
     easy_samples_set = set()
     for _, row in easy_df.iterrows():
         content = row['prompt'][0]['content']
         
-        # 从content中提取headline和abstract
+        # Extract headline and abstract from content
         try:
             headline_start = content.find("Headline: ") + len("Headline: ")
             headline_end = content.find("\n", headline_start)
@@ -159,11 +153,11 @@ def create_time_inferring_easy_dataset():
     
     print(f"Loaded {len(easy_samples_set)} unique samples from easy dataset.")
     
-    # 加载所有时间推断样本
+    # Load all time inference samples
     all_df = pd.read_parquet(all_samples_path)
     print(f"Loaded {len(all_df)} samples from all time_inferring dataset.")
     
-    # 筛选匹配的样本
+    # Filter matching samples
     matched_indices = []
     
     for idx, row in all_df.iterrows():
@@ -178,20 +172,20 @@ def create_time_inferring_easy_dataset():
             abstract_end = content.find("\n", abstract_start)
             abstract = content[abstract_start:abstract_end].strip()
             
-            # 检查是否在简单样本集合中
+            # Check if it is in a simple sample collection
             if (headline, abstract) in easy_samples_set:
                 matched_indices.append(idx)
         except Exception:
             continue
     
-    # 创建新的DataFrame并保存
+    # Create a new DataFrame and save it
     matched_df = all_df.iloc[matched_indices].copy()
     
-    # 更新extra_info中的split字段
+    # Update split field in extra_info
     for i in range(len(matched_df)):
         matched_df.iloc[i]['extra_info']['split'] = 'train_easy'
     
-    # 保存为Parquet文件
+    # Save as a Parquet file
     matched_df.to_parquet(output_path, index=False)
     print(f"Finished! {len(matched_df)} matched samples saved to {output_path}.")
 
@@ -200,7 +194,7 @@ def create_time_inferring_easy_dataset():
 
 
 # if __name__ == "__main__":
-#     # 设置随机种子以确保可重复性
+# # Set random seeds to ensure repeatability
 #     random.seed(1024)
 #     main()
 
@@ -211,21 +205,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def analyze_month_difference_distribution():
-    """
-    分析train_time_reasoning_combined.parquet中time_difference任务的月份差分布
-    """
-    # 文件路径
-    dataset_path = "/data/zliu331/temporal_reasoning/TinyZero/datasets/train_time_reasoning_combined.parquet"
+    """Analyze the month difference distribution of time_difference task in train_time_reasoning_combined.parquet"""
+    # File path
+    dataset_path = "Time-R1/datasets/train_time_reasoning_combined.parquet"
     
-    # 读取数据集
+    # Read the dataset
     print(f"Reading {dataset_path}...")
     df = pd.read_parquet(dataset_path)
     
-    # 筛选time_difference任务
+    # Filter time_difference task
     time_diff_df = df[df['extra_info'].apply(lambda x: x.get('task') == 'time_difference')]
     print(f"Found {len(time_diff_df)} time_difference samples in the dataset.")
     
-    # 提取月份差值
+    # Extract the month difference
     month_diffs = []
     for _, row in time_diff_df.iterrows():
         ground_truth = row['reward_model']['ground_truth']
@@ -237,7 +229,7 @@ def analyze_month_difference_distribution():
     month_diffs = np.array(month_diffs)
     print(f"Extracted {len(month_diffs)} valid month difference values.")
     
-    # 统计基本信息
+    # Statistical basic information
     print("\n--- Month Difference Statistics ---")
     print(f"Mean: {np.mean(month_diffs):.2f}")
     print(f"Median: {np.median(month_diffs):.2f}")
@@ -245,7 +237,7 @@ def analyze_month_difference_distribution():
     print(f"Max: {np.max(month_diffs):.2f}")
     print(f"Std Dev: {np.std(month_diffs):.2f}")
     
-    # 区间分布
+    # interval distribution
     ranges = [0, 5, 10, 15, 20, 25, 30, 40, 50, 75, 100, np.inf]
     range_labels = ['0-5', '6-10', '11-15', '16-20', '21-25', '26-30', '31-40', 
                     '41-50', '51-75', '76-100', '100+']
@@ -257,7 +249,7 @@ def analyze_month_difference_distribution():
         percentage = count / len(month_diffs) * 100
         print(f"{range_labels[i]}: {count} samples ({percentage:.2f}%)")
     
-    # 返回统计结果
+    # Return statistics
     return {
         'month_diffs': month_diffs,
         'ranges': ranges,
@@ -268,7 +260,7 @@ def analyze_month_difference_distribution():
 # if __name__ == "__main__":
 #     stats = analyze_month_difference_distribution()
     
-    # 如果想要可视化，取消下面注释
+    # If you want to visualize, uncomment the following
     # plt.figure(figsize=(12, 6))
     # plt.bar(stats['range_labels'], stats['counts'])
     # plt.title('Month Difference Distribution in time_difference Task')
@@ -280,7 +272,7 @@ def analyze_month_difference_distribution():
 
 
 def extract_headline_abstract(content):
-    """从提示内容中提取标题和摘要"""
+    """Extract title and summary from prompt content"""
     try:
         headline_start = content.find("Headline: ") + len("Headline: ")
         headline_end = content.find("\n", headline_start)
@@ -295,9 +287,9 @@ def extract_headline_abstract(content):
         return None, None
 
 def extract_two_events(content):
-    """从time_difference任务提示中提取两个事件的标题和摘要"""
+    """Extract the title and summary of two events from the time_difference task prompt"""
     try:
-        # 提取第一个事件
+        # Extract the first event
         event1_headline_start = content.find("News article 1:\nHeadline: ") + len("News article 1:\nHeadline: ")
         event1_headline_end = content.find("\n", event1_headline_start)
         event1_headline = content[event1_headline_start:event1_headline_end].strip()
@@ -306,7 +298,7 @@ def extract_two_events(content):
         event1_abstract_end = content.find("\n", event1_abstract_start)
         event1_abstract = content[event1_abstract_start:event1_abstract_end].strip()
         
-        # 提取第二个事件
+        # Extract the second event
         event2_headline_start = content.find("News article 2:\nHeadline: ") + len("News article 2:\nHeadline: ")
         event2_headline_end = content.find("\n", event2_headline_start)
         event2_headline = content[event2_headline_start:event2_headline_end].strip()
@@ -320,12 +312,12 @@ def extract_two_events(content):
         return None, None
     
 def add_difficulty_tags_to_dataset(combined_path, easy_samples_path, output_path):
-    """为混合数据集中的每个样本添加难度标签"""
-    # 加载数据集
+    """Add difficulty labels for each sample in the mixed dataset"""
+    # Load the dataset
     combined_df = pd.read_parquet(combined_path)
     easy_df = pd.read_parquet(easy_samples_path)
     
-    # 建立简单样本的标识集合（标题+摘要）
+    # Create a collection of identifications for simple samples (title + abstract)
     easy_identifiers = set()
     for _, row in easy_df.iterrows():
         content = row['prompt'][0]['content']
@@ -338,7 +330,7 @@ def add_difficulty_tags_to_dataset(combined_path, easy_samples_path, output_path
             
     print(f"Loaded {len(easy_identifiers)} unique easy samples for matching")
     
-    # 记录各类型任务难度统计
+    # Record the difficulty statistics of various types of tasks
     difficulty_stats = {
         "time_inferring": {"easy": 0, "hard": 0},
         "time_difference": {"easy": 0, "hard": 0},
@@ -346,24 +338,24 @@ def add_difficulty_tags_to_dataset(combined_path, easy_samples_path, output_path
         "time_completion": {"easy": 0, "hard": 0}
     }
     
-    # 遍历混合数据集的每个样本，添加难度标签
+    # traverse each sample of the mixed dataset and add difficulty labels
     for idx, row in combined_df.iterrows():
         task_type = row['extra_info']['task']
         content = row['prompt'][0]['content']
         
-        # 初始化默认为"困难"
+        # Initialization defaults to "difficult"
         difficulty = {
             "is_easy": False,
-            "alpha": 0.07  # 困难样本使用宽松alpha
+            "alpha": 0.07  # Use loose alpha for difficult samples
         }
         
-        # 根据任务类型分别处理
+        # Process according to task type
         if task_type == "time_inferring":
             try:
                 headline, abstract = extract_headline_abstract(content)
                 if headline and abstract and (headline, abstract) in easy_identifiers:
                     difficulty["is_easy"] = True
-                    difficulty["alpha"] = 0.1  # 简单样本使用严格alpha
+                    difficulty["alpha"] = 0.1  # Simple sample use strict alpha
                     difficulty_stats[task_type]["easy"] += 1
                 else:
                     difficulty_stats[task_type]["hard"] += 1
@@ -371,16 +363,16 @@ def add_difficulty_tags_to_dataset(combined_path, easy_samples_path, output_path
                 difficulty_stats[task_type]["hard"] += 1
                 
         elif task_type == "time_difference":
-            # 提取两个事件的标题和摘要
+            # Extract the title and summary of two events
             try:
                 event1, event2 = extract_two_events(content)
                 if event1 and event2:
                     event1_easy = (event1[0], event1[1]) in easy_identifiers
                     event2_easy = (event2[0], event2[1]) in easy_identifiers
                     
-                    # 记录每个事件的难度
+                    # Record the difficulty of each event
                     difficulty["events_difficulty"] = [int(event1_easy), int(event2_easy)]
-                    # 如果两个事件都简单，整体任务也简单
+                    # If both events are simple, the overall task is also simple.
                     if event1_easy and event2_easy:
                         difficulty["is_easy"] = True
                         difficulty["alpha"] = 0.1
@@ -393,30 +385,30 @@ def add_difficulty_tags_to_dataset(combined_path, easy_samples_path, output_path
                 difficulty_stats[task_type]["hard"] += 1
                 
         elif task_type == "time_ordering":
-            # 处理三个事件的情况
+            # Handle three events
             try:
-                # 提取三个事件信息
+                # Extract three event information
                 events_easy = []
                 
-                # 提取第一个事件
+                # Extract the first event
                 event1_headline, event1_abstract = extract_event_info(content, 1)
                 event1_easy = (event1_headline, event1_abstract) in easy_identifiers if event1_headline and event1_abstract else False
                 events_easy.append(int(event1_easy))
                 
-                # 提取第二个事件
+                # Extract the second event
                 event2_headline, event2_abstract = extract_event_info(content, 2)
                 event2_easy = (event2_headline, event2_abstract) in easy_identifiers if event2_headline and event2_abstract else False
                 events_easy.append(int(event2_easy))
                 
-                # 提取第三个事件
+                # Extract the third event
                 event3_headline, event3_abstract = extract_event_info(content, 3)
                 event3_easy = (event3_headline, event3_abstract) in easy_identifiers if event3_headline and event3_abstract else False
                 events_easy.append(int(event3_easy))
                 
-                # 记录每个事件的难度
+                # Record the difficulty of each event
                 difficulty["events_difficulty"] = events_easy
                 
-                # 如果全部事件都简单，整体任务也简单
+                # If all events are simple, the overall task is simple.
                 if all(events_easy):
                     difficulty["is_easy"] = True
                     difficulty["alpha"] = 0.1
@@ -427,16 +419,16 @@ def add_difficulty_tags_to_dataset(combined_path, easy_samples_path, output_path
                 difficulty_stats[task_type]["hard"] += 1
             
         elif task_type == "time_completion":
-            # 特殊处理time_completion任务
+            # Special processing time_completion task
             try:
-                # 提取标题和摘要
+                # Extract title and summary
                 headline, abstract = extract_headline_abstract(content)
                 
-                # 由于难以还原原始内容，只要标题或摘要在简单样本中就标记为简单
-                # 遍历简单样本集合
+                # Because it is difficult to restore the original content, the title or summary is marked as simple in a simple sample
+                # traverse a simple sample collection
                 found_match = False
                 for easy_headline, easy_abstract in easy_identifiers:
-                    # 检查标题或摘要是否有高度匹配
+                    # Check if the title or summary has a high match
                     if (headline and easy_headline and (headline in easy_headline or easy_headline in headline)) or \
                        (abstract and easy_abstract and (abstract in easy_abstract or easy_abstract in abstract)):
                         found_match = True
@@ -451,10 +443,10 @@ def add_difficulty_tags_to_dataset(combined_path, easy_samples_path, output_path
             except Exception:
                 difficulty_stats[task_type]["hard"] += 1
             
-        # 将难度信息添加到ground_truth中
+        # Add difficulty information to ground_truth
         combined_df.at[idx, 'reward_model']['ground_truth']['difficulty'] = difficulty
     
-    # 打印难度统计
+    # Print difficulty statistics
     print("\n=== Difficulty Statistics ===")
     for task_type, stats in difficulty_stats.items():
         total = stats["easy"] + stats["hard"]
@@ -462,12 +454,12 @@ def add_difficulty_tags_to_dataset(combined_path, easy_samples_path, output_path
             easy_percent = stats["easy"] / total * 100
             print(f"{task_type}: {stats['easy']} easy ({easy_percent:.1f}%), {stats['hard']} hard ({100-easy_percent:.1f}%)")
     
-    # 保存添加了难度标签的数据集
+    # Save the dataset with difficulty tags added
     combined_df.to_parquet(output_path, index=False)
     print(f"Saved dataset with difficulty tags to {output_path}")
 
 def extract_event_info(content, event_num):
-    """从time_ordering任务提示中提取指定事件的标题和摘要"""
+    """Extract the title and summary of the specified event from the time_ordering task prompt"""
     try:
         event_headline_start = content.find(f"News article {event_num}:\nHeadline: ") + len(f"News article {event_num}:\nHeadline: ")
         event_headline_end = content.find("\n", event_headline_start)
@@ -482,18 +474,16 @@ def extract_event_info(content, event_num):
         return None, None
     
 def main_difficulty_tagging():
-    """
-    为时间推理训练数据集添加难度标签和动态alpha值，
-    用于实现多阶段训练策略中的第二阶段混合训练
-    """
-    # 设置文件路径
-    dataset_dir = "/data/zliu331/temporal_reasoning/TinyZero/datasets"
+    """Add difficulty labels and dynamic alpha values ​​to the time inference training dataset.
+    Used to implement the second phase hybrid training in a multi-stage training strategy"""
+    # Set file path
+    dataset_dir = "Time-R1/datasets"
     
-    # 输入文件
+    # Enter a file
     combined_path = os.path.join(dataset_dir, "train_time_reasoning_combined.parquet")
     easy_samples_path = os.path.join(dataset_dir, "train_easy_nyt.parquet")
     
-    # 输出文件
+    # Output file
     output_path = os.path.join(dataset_dir, "train_time_reasoning_dynamic_alpha.parquet")
     
     print("\n===== Adding Difficulty Tags and Dynamic Alpha Values =====")
@@ -501,12 +491,12 @@ def main_difficulty_tagging():
     print(f"Easy samples reference: {easy_samples_path}")
     print(f"Output dataset: {output_path}")
     
-    # 调用难度标签添加函数
+    # Call the difficulty tag to add functions
     add_difficulty_tags_to_dataset(combined_path, easy_samples_path, output_path)
     
     print("\nDifficulty tagging completed successfully!")
     
-    # # 对测试集也做同样处理
+    # # The same processing is done to the test set
     # test_combined_path = os.path.join(dataset_dir, "test_time_reasoning_combined.parquet")
     # test_output_path = os.path.join(dataset_dir, "test_time_reasoning_dynamic_alpha.parquet")
     
@@ -517,17 +507,17 @@ def main_difficulty_tagging():
 
 
 if __name__ == "__main__":
-    # 根据需要取消下面函数的注释来运行不同的数据集生成任务
+    # Uncomment the following functions as needed to run different dataset generation tasks
     
-    # 生成简单时间推断数据集
+    # Generate a simple time inference dataset
     # create_time_inferring_easy_dataset()
     
-    # 生成混合数据集
+    # Generate mixed datasets
     # random.seed(1024)
     # main()
     
-    # 分析月份差分布
+    # Analyze the month difference distribution
     # stats = analyze_month_difference_distribution()
     
-    # 添加难度标签和动态alpha值
+    # Add difficulty labels and dynamic alpha values
     main_difficulty_tagging()

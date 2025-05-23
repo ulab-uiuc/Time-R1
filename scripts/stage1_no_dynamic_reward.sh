@@ -7,23 +7,21 @@ export VLLM_ATTENTION_BACKEND=XFORMERS
 set -e
 
 model_name=Qwen2.5-3B-Instruct ###
-BASE_MODEL=     ### theta1 checkpoint path
-task=prediction
+BASE_MODEL=    ### Qwen2.5-3B-Instruct model path
+task=comprehension
 OUTPUT_BASE_DIR=Time-R1
-EXPERIMENT_NAME=${task}/theta2
-
+EXPERIMENT_NAME=${task}/theta1_no_dynamic_reward
 
 DATA_DIR=${OUTPUT_BASE_DIR}/datasets
-OUTPUT_DIR=${OUTPUT_BASE_DIR}/check_points_theta2
+OUTPUT_DIR=${OUTPUT_BASE_DIR}/check_points_theta1_no_dynamic_reward
 N_GPUS=$(echo $CUDA_VISIBLE_DEVICES | awk -F',' '{print NF}')
 ROLLOUT_TP_SIZE=$N_GPUS
 
 
-
-python3 -m verl.trainer.main_ppo \
+python3 -m verl.trainer.main_ppo_s1_p1 \
 algorithm.adv_estimator=grpo \
-data.train_files=$DATA_DIR/train_prediction_combined.parquet \
-data.val_files=$DATA_DIR/test_prediction.parquet \
+data.train_files=$DATA_DIR/train_comprehension_combined.parquet \
+data.val_files=$DATA_DIR/test_comprehension_combined.parquet \
 data.train_batch_size=128 \
 data.val_batch_size=512 \
 data.prompt_key=prompt \
@@ -61,7 +59,7 @@ trainer.default_hdfs_dir=null \
 trainer.default_local_dir=${OUTPUT_DIR}/${EXPERIMENT_NAME} \
 trainer.n_gpus_per_node=${N_GPUS} \
 trainer.nnodes=1 \
-trainer.save_freq=10 \
+trainer.save_freq=20 \
 trainer.test_freq=10 \
-trainer.total_training_steps=110 \
+trainer.total_training_steps=1000 \
 trainer.total_epochs=15 2>&1 | tee verl_demo.log

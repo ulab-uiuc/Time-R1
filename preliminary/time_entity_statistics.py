@@ -6,13 +6,13 @@ import random
 from datetime import datetime
 from collections import Counter
 
-# 定义月份列表及其变体
+# Define a list of months and its variants
 MONTHS = [
     "January", "February", "March", "April", "May", "June", 
     "July", "August", "September", "October", "November", "December"
 ]
 
-# 包括月份的简写和变体
+# Includes abbreviation and variations of the month
 MONTH_VARIANTS = {
     "January": ["January", "Jan", "Jan."],
     "February": ["February", "Feb", "Feb."],
@@ -28,7 +28,7 @@ MONTH_VARIANTS = {
     "December": ["December", "Dec", "Dec."]
 }
 
-# 创建月份别名到标准月份的映射
+# Create a map of month alias to standard month
 MONTH_MAPPING = {}
 for standard, variants in MONTH_VARIANTS.items():
     for variant in variants:
@@ -83,7 +83,7 @@ def load_events(input_dir, years, split_ratio=0.9, random_seed=1024):
                 }
                 all_events.append(event)
     
-    # Split events into train and test sets - 与event_order_nyt.py完全相同
+    # Split events into train and test sets - exactly the same as event_order_nyt.py
     random.seed(random_seed)
     random.shuffle(all_events)
     split_index = int(split_ratio * len(all_events))
@@ -91,29 +91,29 @@ def load_events(input_dir, years, split_ratio=0.9, random_seed=1024):
     return all_events[:split_index], all_events[split_index:]
 
 def extract_years(text):
-    """提取文本中的年份（四位数字），使用上下文规则过滤非年份的四位数字"""
+    """Extract the year (four digits) in the text and filter the four digits of non-years using context rules"""
     years = []
     
-    # 查找形如yyyy的四位数字
+    # Find four digits in the shape of yyyy
     year_matches = re.finditer(r'\b(19\d\d|20\d\d)\b', text)
     
     for match in year_matches:
         year = match.group(1)
         start, end = match.span()
         
-        # 获取上下文 (前后30个字符)
+        # Get the context (30 characters before and after)
         context_start = max(0, start - 15)
         context_end = min(len(text), end + 15)
         context = text[context_start:context_end].lower()
         
-        # 检查上下文是否支持这是一个年份
-        # 例如，上下文中有时间词汇或介词暗示时间
+        # Check if the context supports this year
+        # For example, there is a time vocabulary or preposition in the context that suggests time
         is_year = (
-            # 时间词汇
+            # Time Vocabulary
             any(word in context for word in ["year""in", "on", "of", "since", "during", "before", "after", "through", "until", "for", "by", "at", "from"]) or
-            # 月份名
+            # Month name
             any(month.lower() in context for month in MONTHS) or
-            # 季节名
+            # Season Name
             any(season in context for season in ["spring", "summer", "fall", "autumn", "winter"])
         )
         
@@ -123,61 +123,61 @@ def extract_years(text):
     return years
 
 def extract_months_0(text):
-    """提取文本中的月份名称，使用增强的上下文规则过滤非月份含义的词"""
+    """Extract the month name in the text and filter words with enhanced context rules that are not meaningful to month"""
     found_months = []
     text_lower = text.lower()
     
-    # 具有歧义的月份单词
+    # Ambiguity of the month words
     ambiguous_months = ["may", "march", "august"]
     
-    # 情态动词"may"的常见模式
+    # Common patterns of modal verb "may"
     modal_may_patterns = [
-        r'may\s+(be|have|not|also|include|seem|become|need|want|make|take|get|help|cause|vary|\w+\s+to)',  # may后跟动词或不定式
-        r'(it|this|that|they|we|you|he|she|which|who)\s+may\s+\w+',  # 代词+may+动词
-        r'(and|but|or|then|however|therefore)\s+may\s+\w+',  # 连词+may+动词
-        r'may\s+(not|never|only|also|still|yet)'  # may后跟副词
+        r'may\s+(be|have|not|also|include|seem|become|need|want|make|take|get|help|cause|vary|\w+\s+to)',  # may followed by verb or infinitive
+        r'(it|this|that|they|we|you|he|she|which|who)\s+may\s+\w+',  # Pronoun + may + verb
+        r'(and|but|or|then|however|therefore)\s+may\s+\w+',  # conjunction + may + verb
+        r'may\s+(not|never|only|also|still|yet)'  # may followed by adverb
     ]
     
-    # 检查每个月份
+    # Check every month
     for standard_month, variants in MONTH_VARIANTS.items():
         for variant in variants:
             variant_lower = variant.lower()
             
-            # 简单检查该变体是否出现在文本中
+            # Simply check if the variant appears in the text
             if not re.search(r'\b' + re.escape(variant_lower) + r'\b', text_lower):
                 continue
                 
-            # 对于可能有歧义的月份，需要额外的上下文检查
+            # For months that may be ambiguity, additional context checks are required
             if variant_lower in ambiguous_months:
-                # 提取包含该月份的上下文
+                # Extract the context containing the month
                 contexts = []
                 for match in re.finditer(r'\b' + re.escape(variant_lower) + r'\b', text_lower):
                     start, end = match.span()
-                    # 使用更大的上下文窗口(30个字符)来捕获更多上下文信息
+                    # Use a larger context window (30 characters) to capture more context information
                     context_start = max(0, start - 15)
                     context_end = min(len(text_lower), end + 15)
                     context = text_lower[context_start:context_end]
                     contexts.append(context)
                 
-                # 检查是否有任何上下文满足时间相关条件
+                # Check if any context meets the time-related conditions
                 is_month = False
                 for context in contexts:
-                    # 对于"may"特别检查是否是情态动词
+                    # For "may" special check whether it is a modal verb
                     if variant_lower == "may":
-                        # 检查是否匹配情态动词may的模式
+                        # Check whether the pattern matches the modal verb may
                         is_modal_verb = any(re.search(pattern, context) for pattern in modal_may_patterns)
                         if is_modal_verb:
-                            continue  # 如果是情态动词，跳过这个匹配
+                            continue  # If it is a modal verb, skip this match
                     
-                    # 检查上下文中的时间指示
+                    # Check the time indication in the context
                     is_time_context = (
-                        # 明确的时间格式
+                        # Clear time format
                         re.search(r'(in|on|of|since|during|before|after|through|until|for|by)\s+' + re.escape(variant_lower), context) or
                         re.search(re.escape(variant_lower) + r'\s+\d{1,2}(st|nd|rd|th)?', context) or
-                        # 年份在附近
+                        # Year is nearby
                         re.search(r'\b(19\d\d|20\d\d)\b.*' + re.escape(variant_lower), context) or
                         re.search(re.escape(variant_lower) + r'.*\b(19\d\d|20\d\d)\b', context) or
-                        # 其他季节或月份在附近
+                        # Other seasons or months are nearby
                         any(month.lower() != variant_lower and month.lower() in context for month in MONTHS) or
                         any(season in context for season in ["spring", "summer", "fall", "autumn", "winter"])
                     )
@@ -187,17 +187,17 @@ def extract_months_0(text):
                         break
                 
                 if not is_month:
-                    continue  # 如果没有时间上下文，跳过这个可能有歧义的月份
+                    continue  # If there is no time context, skip this month that may be ambiguous
             
-            # 添加到找到的月份列表
+            # Add to list of found months
             found_months.append(standard_month)
-            break  # 找到一个变体就停止检查其他变体
+            break  # Find a variant and stop checking for other variants
     
     return found_months
 
 def get_word_context(text, position, n_words=3):
-    """获取指定位置前后n个单词的上下文"""
-    # 分割文本为单词列表及其位置
+    """Get the context of n words before and after the specified position"""
+    # Split text into a word list and its position
     word_positions = []
     for match in re.finditer(r'\b\w+\b', text):
         word_positions.append((match.start(), match.end(), match.group()))
@@ -205,14 +205,14 @@ def get_word_context(text, position, n_words=3):
     if not word_positions:
         return [], "", []
     
-    # 找到包含目标位置的单词索引
+    # Find the word index containing the target position
     target_index = -1
     for i, (start, end, _) in enumerate(word_positions):
         if start <= position < end:
             target_index = i
             break
     
-    # 如果没找到精确匹配，找最接近的单词
+    # If no exact match is found, find the closest word
     if target_index == -1:
         for i, (start, end, _) in enumerate(word_positions):
             if start > position:
@@ -221,7 +221,7 @@ def get_word_context(text, position, n_words=3):
         if target_index == -1:
             target_index = len(word_positions) - 1
     
-    # 获取前后n个单词
+    # Get n words before and after
     start_index = max(0, target_index - n_words)
     end_index = min(len(word_positions), target_index + n_words + 1)
     
@@ -232,227 +232,227 @@ def get_word_context(text, position, n_words=3):
     return before_words, current_word, after_words
 
 def extract_months(text):
-    """提取文本中的月份名称，使用基于单词的上下文规则进行严格过滤"""
+    """Extract the month names in the text and use word-based context rules for strict filtering"""
     found_months = []
     text_lower = text.lower()
     
-    # 严格过滤的月份
+    # Strictly filtered months
     strict_months = ["may", "march", "august"]
     
     for standard_month, variants in MONTH_VARIANTS.items():
         for variant in variants:
             variant_lower = variant.lower()
             
-            # 简单检查该变体是否出现在文本中
+            # Simply check if the variant appears in the text
             if not re.search(r'\b' + re.escape(variant_lower) + r'\b', text_lower):
                 continue
             
-            # 对需要严格过滤的月份应用特殊规则
+            # Apply special rules for months that require strict filtering
             if variant_lower in strict_months:
                 is_month = False
                 
-                # 查找所有匹配位置
+                # Find all matching positions
                 for match in re.finditer(r'\b' + re.escape(variant_lower) + r'\b', text_lower):
                     start, end = match.span()
                     
-                    # 获取单词级上下文（前后各3个单词）
+                    # Get word-level context (3 words in front and after)
                     before_words, current_word, after_words = get_word_context(text_lower, start, n_words=3)
                     
-                    # 排除特殊情况 - Mar-a-Lago
+                    # Exclude special circumstances - Mar-a-Lago
                     if variant_lower == "mar" and "a-lago" in " ".join(after_words):
                         continue
                     
-                    # 条件1: 介词+月份格式
+                    # Condition 1: Preposition + Month Format
                     if before_words and before_words[-1] in ["in", "on", "of", "since", "during", "before", "after", "through", "until", "by", "at", "from"]:
                         is_month = True
                         break
                     
-                    # 条件2: 月份+数字格式
+                    # Condition 2: Month + Number Format
                     if after_words and re.match(r'\d{1,2}(st|nd|rd|th)?', after_words[0]):
                         is_month = True
                         break
                     
-                    # 条件3: 月份+年份格式
+                    # Condition 3: Month + Year format
                     if after_words and re.match(r'(19|20)\d{2}', after_words[0]):
                         is_month = True
                         break
                     
-                    # # 条件4: 年份+月份格式 (新增)
+                    # # Condition 4: Year + Month Format (New)
                     # if before_words and re.match(r'(19|20)\d{2}', before_words[-1]):
                     #     is_month = True
                     #     break
                 
-                # 如果没有找到符合条件的证据，跳过这个月份
+                # If no evidence is found to meet the criteria, skip this month
                 if not is_month:
                     continue
             else:
-                # 对于其他月份，使用较宽松的规则
-                is_month = True  # 默认接受非歧义月份
+                # For other months, use looser rules
+                is_month = True  # Non-ambiguous months are accepted by default
             
-            # 添加到找到的月份列表
+            # Add to list of found months
             found_months.append(standard_month)
-            break  # 找到一个变体就停止检查其他变体
+            break  # Find a variant and stop checking for other variants
     
     return found_months
 
 def count_time_entity_distribution(events):
-    """统计每条新闻中时间实体出现次数的分布，确保每次月份出现都经过严格验证"""
+    """Statistics the distribution of time entities in each news to ensure that each month appears strictly verified"""
     
-    # 用于存储每条新闻中时间实体出现次数
+    # Used to store the number of time entities occur in each news
     year_counts_per_article = []
-    month_counts_per_article = []  # 月份出现的总次数（严格验证）
+    month_counts_per_article = []  # Total number of occurrences in the month (strict verification)
     
     for event in events:
         headline = event.get("headline", "")
         abstract = event.get("abstract", "")
         
-        # 合并标题和摘要以便分析
+        # Merge titles and abstracts for analysis
         full_text = headline + " " + abstract
         text_lower = full_text.lower()
         
-        # 提取年份
+        # Extract year
         years = extract_years(full_text)
         year_counts_per_article.append(len(years))
         
-        # 统计月份出现次数（使用严格规则）
+        # count the number of occurrences in the month (using strict rules)
         month_count = 0
         
-        # 遍历所有月份及其变体
+        # traverse all months and their variations
         for standard_month, variants in MONTH_VARIANTS.items():
             for variant in variants:
                 variant_lower = variant.lower()
                 
-                # 找到该变体的所有匹配位置
+                # Find all matching positions for this variant
                 for match in re.finditer(r'\b' + re.escape(variant_lower) + r'\b', text_lower):
                     start, end = match.span()
                     
-                    # 应用验证规则
+                    # Apply verification rules
                     is_valid_month = False
                     
-                    # 严格月份需要特殊处理
+                    # Strict month requires special treatment
                     strict_months = ["may", "march", "august"]
                     if variant_lower in strict_months:
-                        # 获取单词级上下文
+                        # Get word-level context
                         before_words, current_word, after_words = get_word_context(text_lower, start, n_words=3)
                         
-                        # 排除Mar-a-Lago
+                        # Exclude Mar-a-Lago
                         if variant_lower == "mar" and any("a-lago" in word for word in after_words):
                             continue
                         
-                        # 验证规则
-                        # 1. 介词+月份
+                        # Verification Rules
+                        # 1. Preposition + Month
                         if before_words and before_words[-1] in ["in", "on", "of", "since", "during", "before", "after", "through", "until", "by", "at", "from"]:
                             is_valid_month = True
                         
-                        # 2. 月份+数字
+                        # 2. Month + Number
                         elif after_words and re.match(r'\d{1,2}(st|nd|rd|th)?', after_words[0]):
                             is_valid_month = True
                         
-                        # 3. 月份+年份
+                        # 3. Month + Year
                         elif after_words and re.match(r'(19|20)\d{2}', after_words[0]):
                             is_valid_month = True
                         
-                        # 4. 年份+月份(可选激活)
+                        # 4. Year + Month (optional activation)
                         # elif before_words and re.match(r'(19|20)\d{2}', before_words[-1]):
                         #     is_valid_month = True
                     else:
-                        # 非严格月份可以直接计入
+                        # Non-strict months can be counted directly
                         is_valid_month = True
                     
-                    # 如果验证通过，计数加1
+                    # If verification is passed, add 1
                     if is_valid_month:
                         month_count += 1
         
-        # 记录此条新闻中的有效月份次数
+        # Record the number of valid months in this news
         month_counts_per_article.append(month_count)
     
-    # 统计分布
+    # Statistical distribution
     year_count_distribution = Counter(year_counts_per_article)
     month_count_distribution = Counter(month_counts_per_article)
     
     return year_count_distribution, month_count_distribution
 
 def count_combined_time_entity_distribution(events):
-    """统计每条新闻中时间实体(年份+月份)总出现次数的分布"""
+    """Statistics the distribution of the total number of occurrences of time entities (year + month) in each news"""
     
-    # 用于存储每条新闻中时间实体总出现次数
+    # Used to store the total number of time entities occurring in each news
     combined_counts_per_article = []
     
     for event in events:
         headline = event.get("headline", "")
         abstract = event.get("abstract", "")
         
-        # 合并标题和摘要以便分析
+        # Merge titles and abstracts for analysis
         full_text = headline + " " + abstract
         text_lower = full_text.lower()
         
-        # 提取年份
+        # Extract year
         years = extract_years(full_text)
         year_count = len(years)
         
-        # 统计月份出现次数（使用严格规则）
+        # count the number of occurrences in the month (using strict rules)
         month_count = 0
         
-        # 遍历所有月份及其变体
+        # traverse all months and their variations
         for standard_month, variants in MONTH_VARIANTS.items():
             for variant in variants:
                 variant_lower = variant.lower()
                 
-                # 找到该变体的所有匹配位置
+                # Find all matching positions for this variant
                 for match in re.finditer(r'\b' + re.escape(variant_lower) + r'\b', text_lower):
                     start, end = match.span()
                     
-                    # 应用验证规则
+                    # Apply verification rules
                     is_valid_month = False
                     
-                    # 严格月份需要特殊处理
+                    # Strict month requires special treatment
                     strict_months = ["may", "march", "august"]
                     if variant_lower in strict_months:
-                        # 获取单词级上下文
+                        # Get word-level context
                         before_words, current_word, after_words = get_word_context(text_lower, start, n_words=3)
                         
-                        # 排除Mar-a-Lago
+                        # Exclude Mar-a-Lago
                         if variant_lower == "mar" and any("a-lago" in word for word in after_words):
                             continue
                         
-                        # 验证规则
-                        # 1. 介词+月份
+                        # Verification Rules
+                        # 1. Preposition + Month
                         if before_words and before_words[-1] in ["in", "on", "of", "since", "during", "before", "after", "through", "until", "by", "at", "from"]:
                             is_valid_month = True
                         
-                        # 2. 月份+数字
+                        # 2. Month + Number
                         elif after_words and re.match(r'\d{1,2}(st|nd|rd|th)?', after_words[0]):
                             is_valid_month = True
                         
-                        # 3. 月份+年份
+                        # 3. Month + Year
                         elif after_words and re.match(r'(19|20)\d{2}', after_words[0]):
                             is_valid_month = True
                     else:
-                        # 非严格月份可以直接计入
+                        # Non-strict months can be counted directly
                         is_valid_month = True
                     
-                    # 如果验证通过，计数加1
+                    # If verification is passed, add 1
                     if is_valid_month:
                         month_count += 1
         
-        # 记录此条新闻中年份和月份的总次数
+        # Record the total number of years and months in this news
         combined_counts_per_article.append(year_count + month_count)
     
-    # 统计分布
+    # Statistical distribution
     combined_count_distribution = Counter(combined_counts_per_article)
     
     return combined_count_distribution
 
 def analyze_time_entities(events):
-    """分析事件中的时间实体"""
+    """Analyze the time entities in events"""
     year_counter = Counter()
     month_counter = Counter()
     
-    # 记录包含时间实体的事件数
+    # Record the number of events containing time entities
     events_with_years = 0
     events_with_months = 0
     
-    # 保存包含时间实体的示例
+    # Save an example containing the time entity
     examples_with_years = []
     examples_with_months = []
     
@@ -460,44 +460,44 @@ def analyze_time_entities(events):
         headline = event.get("headline", "")
         abstract = event.get("abstract", "")
         
-        # 合并标题和摘要以便分析
+        # Merge titles and abstracts for analysis
         full_text = headline + " " + abstract
         
-        # 提取年份和月份
+        # Extract year and month
         years = extract_years(full_text)
         months = extract_months(full_text)
         
-        # 更新计数器
+        # Update counter
         year_counter.update(years)
         month_counter.update(months)
         
-        # 记录包含时间实体的事件数
+        # Record the number of events containing time entities
         if years:
             events_with_years += 1
-            # 存储所有例子，不再限制数量
+            # Store all examples without limiting the number
             examples_with_years.append({
                 "text": full_text,
                 "years": years
             })
         if months:
             events_with_months += 1
-            # 存储所有例子，不再限制数量
+            # Store all examples without limiting the number
             examples_with_months.append({
                 "text": full_text,
                 "months": months
             })
 
-        # # 记录包含时间实体的事件数
+        # # Record the number of events containing time entities
         # if years:
         #     events_with_years += 1
-        #     if len(examples_with_years) < 5:  # 保存前5个示例
+        # if len(examples_with_years) < 5: # Save the first 5 examples
         #         examples_with_years.append({
         #             "text": full_text,
         #             "years": years
         #         })
         # if months:
         #     events_with_months += 1
-        #     if len(examples_with_months) < 5:  # 保存前5个示例
+        # if len(examples_with_months) < 5: # Save the first 5 examples
         #         examples_with_months.append({
         #             "text": full_text,
         #             "months": months
@@ -506,69 +506,69 @@ def analyze_time_entities(events):
     return year_counter, month_counter, events_with_years, events_with_months, examples_with_years, examples_with_months
 
 def print_results(train_years, train_months, test_years, test_months):
-    """打印统计结果"""
-    print("=== 年份统计 ===")
-    print("训练集:")
+    """Print statistics results"""
+    print("=== Year Statistics ===")
+    print("Training set:")
     for year, count in sorted(train_years.items()):
         print(f"  {year}: {count}")
     
-    print("\n测试集:")
+    print("\nTest Set:")
     for year, count in sorted(test_years.items()):
         print(f"  {year}: {count}")
     
-    print("\n=== 月份统计 ===")
-    print("训练集:")
+    print("\n=== Month Statistics ===")
+    print("Training set:")
     for month in MONTHS:
         print(f"  {month}: {train_months.get(month, 0)}")
     
-    print("\n测试集:")
+    print("\nTest Set:")
     for month in MONTHS:
         print(f"  {month}: {test_months.get(month, 0)}")
 
-# 在main函数中添加，print_results之后
+# Add in main function, after print_results
 def print_random_examples(examples_with_years, examples_with_months, count=100):
-    """随机打印指定数量的年份和月份识别示例"""
-    print(f"\n=== 随机年份识别示例 ({count}个) ===")
+    """Randomly prints a specified number of year and month identification examples"""
+    print(f"\n=== Random year identification examples ({count}) ===")
     if len(examples_with_years) > 0:
-        # 随机选择最多count个例子
+        # Randomly select the most count example
         sample_size = min(count, len(examples_with_years))
         sampled_year_examples = random.sample(examples_with_years, sample_size)
         
         for i, example in enumerate(sampled_year_examples, 1):
-            # 截断过长的文本以提高可读性
+            # Truncate too long text for readability
             text_sample = example['text'][:249] + "..." if len(example['text']) > 249 else example['text']
-            print(f"示例 {i}/{sample_size}:")
-            print(f"文本: {text_sample}")
-            print(f"识别到的年份: {example['years']}")
+            print(f"Example {i}/{sample_size}:")
+            print(f"Text: {text_sample}")
+            print(f"Recognized year: {example['years']}")
             
-            # 打印上下文，帮助验证识别正确性
+            # Print context to help verify the correctness of identification
             for year in example['years']:
-                # 查找年份周围的上下文
+                # Find the context around the year
                 year_pos = example['text'].find(year)
                 if year_pos != -1:
                     context_start = max(0, year_pos - 30)
                     context_end = min(len(example['text']), year_pos + len(year) + 30)
-                    print(f"  '{year}'上下文: ...{example['text'][context_start:context_end]}...")
+                    print(f"'{year}' context: ...{example['text'][context_start:context_end]}...")
             print()
     else:
-        print("没有找到包含年份的例子")
+        print("No examples containing the year were found")
         
-    print(f"\n=== 随机月份识别示例 ({count}个) ===")
+    print(f"\n=== Random month identification examples ({count}) ===")
     if len(examples_with_months) > 0:
-        # 随机选择最多count个例子
+        # Randomly select the most count example
         sample_size = min(count, len(examples_with_months))
         sampled_month_examples = random.sample(examples_with_months, sample_size)
         
         for i, example in enumerate(sampled_month_examples, 1):
-            # 截断过长的文本以提高可读性
+            # Truncate too long text for readability
             text_sample = example['text'][:249] + "..." if len(example['text']) > 249 else example['text']
-            print(f"示例 {i}/{sample_size}:")
-            print(f"文本: {text_sample}")
-            print(f"识别到的月份: {example['months']}")
+            print(f"Example {i}/{sample_size}:")
+            print(f"Text: {text_sample}")
+            print(f"Recognized month: {example['months']}")
             
-            # 打印上下文，帮助验证识别正确性
+            # Print context to help verify the correctness of identification
             for month in example['months']:
-                # 尝试查找月份及其变体周围的上下文
+                # Try to find the context around the month and its variants
                 variants = MONTH_VARIANTS[month]
                 for variant in variants:
                     if variant.lower() in example['text'].lower():
@@ -576,32 +576,32 @@ def print_random_examples(examples_with_years, examples_with_months, count=100):
                         if pos != -1:
                             context_start = max(0, pos - 30)
                             context_end = min(len(example['text']), pos + len(variant) + 30)
-                            print(f"  '{month}'上下文: ...{example['text'][context_start:context_end]}...")
+                            print(f"'{month}' context: ...{example['text'][context_start:context_end]}...")
                             break
             print()
     else:
-        print("没有找到包含月份的例子")
+        print("No examples containing months were found")
 
 def print_specific_month_examples(examples_with_months, month_name, count=30):
-    """打印特定月份的随机示例"""
-    # 筛选包含指定月份的例子
+    """Random examples for printing a specific month"""
+    # Filter examples containing specified months
     matching_examples = [example for example in examples_with_months 
                         if month_name in example['months']]
     
-    print(f"\n=== 随机 {month_name} 识别示例 ({count}个) ===")
+    print(f"\n=== Random {month_name} identification examples ({count}) ===")
     if len(matching_examples) > 0:
-        # 随机选择最多count个例子
+        # Randomly select the most count example
         sample_size = min(count, len(matching_examples))
         sampled_examples = random.sample(matching_examples, sample_size)
         
         for i, example in enumerate(sampled_examples, 1):
-            # 截断过长的文本以提高可读性
+            # Truncate too long text for readability
             text_sample = example['text'][:249] + "..." if len(example['text']) > 249 else example['text']
-            print(f"示例 {i}/{sample_size}:")
-            print(f"文本: {text_sample}")
+            print(f"Example {i}/{sample_size}:")
+            print(f"Text: {text_sample}")
             
-            # 打印上下文，帮助验证识别正确性
-            # 尝试查找月份及其变体周围的上下文
+            # Print context to help verify the correctness of identification
+            # Try to find the context around the month and its variants
             variants = MONTH_VARIANTS[month_name]
             for variant in variants:
                 if variant.lower() in example['text'].lower():
@@ -609,14 +609,14 @@ def print_specific_month_examples(examples_with_months, month_name, count=30):
                     if pos != -1:
                         context_start = max(0, pos - 30)
                         context_end = min(len(example['text']), pos + len(variant) + 30)
-                        print(f"  '{month_name}'上下文: ...{example['text'][context_start:context_end]}...")
+                        print(f"'{month_name}' context: ...{example['text'][context_start:context_end]}...")
                         break
             print()
     else:
-        print(f"没有找到包含月份 {month_name} 的例子")
+        print(f"No examples containing month {month_name} were found")
 
 def create_masked_dataset0(events, output_file):
-    """对事件集合进行时间实体掩码处理并保存为jsonl格式"""
+    """Perform time entity mask processing on event sets and save them in jsonl format"""
     
     masked_events = []
     
@@ -624,28 +624,28 @@ def create_masked_dataset0(events, output_file):
         headline = event.get("headline", "")
         abstract = event.get("abstract", "")
         
-        # 合并标题和摘要用于分析
+        # Merge titles and abstracts for analysis
         full_text = headline + " " + abstract
         text_lower = full_text.lower()
         
-        # 提取年份和月份及其在文本中的位置
+        # Extract year and month and its location in text
         year_entities = []
         month_entities = []
         
-        # 查找年份
+        # Find the year
         for match in re.finditer(r'\b(19\d\d|20\d\d)\b', full_text):
             year_value = match.group(1)
             start, end = match.span()
             
-            # 验证是否为实际年份
+            # Verify that it is the actual year
             is_year = True
             
-            # 获取上下文
+            # Get the context
             context_start = max(0, start - 15)
             context_end = min(len(full_text), end + 15)
             context = full_text[context_start:context_end].lower()
             
-            # 简单验证上下文
+            # Simple verification of context
             if any(word in context for word in ["year", "in", "on", "of", "since", "during", "before", "after"]) or \
                any(month.lower() in context for month in MONTHS) or \
                any(season in context for season in ["spring", "summer", "fall", "autumn", "winter"]):
@@ -656,29 +656,29 @@ def create_masked_dataset0(events, output_file):
                     "type": "year"
                 })
         
-        # 查找月份
+        # Find months
         for standard_month, variants in MONTH_VARIANTS.items():
             for variant in variants:
                 for match in re.finditer(r'\b' + re.escape(variant) + r'\b', full_text, re.IGNORECASE):
                     start, end = match.span()
                     
-                    # 验证是否为真实月份，特别是对于有歧义的月份
+                    # Verify that it is a real month, especially for ambiguous months
                     is_valid_month = True
                     variant_lower = variant.lower()
                     
                     if variant_lower in ["may", "march", "august"]:
-                        # 获取上下文
+                        # Get the context
                         before_words, current_word, after_words = get_word_context(text_lower, start, n_words=3)
                         
-                        # 排除Mar-a-Lago等特殊情况
+                        # Exclude special situations such as Mar-a-Lago
                         if variant_lower == "mar" and any("a-lago" in word for word in after_words):
                             is_valid_month = False
                             continue
                         
-                        # 应用验证规则
+                        # Apply verification rules
                         is_valid_month = False
                         
-                        # 验证规则：介词+月份、月份+数字、月份+年份
+                        # Verification rules: preposition + month, month + number, month + year
                         if before_words and before_words[-1] in ["in", "on", "of", "since", "during", "before", "after", "through", "until", "by", "at", "from"]:
                             is_valid_month = True
                         elif after_words and re.match(r'\d{1,2}(st|nd|rd|th)?', after_words[0]):
@@ -687,14 +687,14 @@ def create_masked_dataset0(events, output_file):
                             is_valid_month = True
                     
                     if is_valid_month:
-                        # 确定实际月份在哪个部分(headline或abstract)
+                        # Determine which part of the actual month is (headline or abstract)
                         if start < len(headline):
-                            # 在标题中
+                            # in the title
                             start_in_component = start
                             component = "headline"
                         else:
-                            # 在摘要中
-                            start_in_component = start - len(headline) - 1  # 减1是因为中间有空格
+                            # in the summary
+                            start_in_component = start - len(headline) - 1  # minus 1 because there is a space in the middle
                             component = "abstract"
                         
                         end_in_component = start_in_component + (end - start)
@@ -709,30 +709,30 @@ def create_masked_dataset0(events, output_file):
                             "type": "month"
                         })
                     
-                    # 找到一个有效月份变体后就跳过该月份的其他变体
+                    # Skip other variants of that month after finding a valid month variant
                     if is_valid_month:
                         break
         
-        # 合并所有时间实体
+        # Merge all time entities
         all_entities = year_entities + month_entities
         
-        # 如果没有时间实体，则跳过该事件
+        # If there is no time entity, skip the event
         if not all_entities:
             # masked_events.append(event)
             continue
         
-        # 随机选择一个时间实体进行掩码
+        # Randomly select a time entity for masking
         entity_to_mask = random.choice(all_entities)
         
-        # 创建掩码后的新闻对象
+        # Create a masked news object
         masked_event = event.copy()
         
-        # 确定掩码标记
+        # Determine the mask mark
         mask_token = "<YEAR>" if entity_to_mask["type"] == "year" else "<MONTH>"
         
-        # 应用掩码
+        # Apply mask
         if "start_in_component" in entity_to_mask:
-            # 月份情况 - 已确定在哪个组件中
+            # Month situation - determined in which component
             component = entity_to_mask["component"]
             start = entity_to_mask["start_in_component"]
             end = entity_to_mask["end_in_component"]
@@ -741,37 +741,37 @@ def create_masked_dataset0(events, output_file):
             masked_text = text[:start] + mask_token + text[end:]
             masked_event[component] = masked_text
         else:
-            # 年份情况 - 需要确定在哪个组件中
+            # Year situation - Need to determine which component to be in
             start = entity_to_mask["start_in_full"]
             end = entity_to_mask["end_in_full"]
             
             if start < len(headline):
-                # 在标题中
+                # in the title
                 masked_text = headline[:start] + mask_token + headline[end:]
                 masked_event["headline"] = masked_text
             else:
-                # 在摘要中
+                # in the summary
                 start_in_abstract = start - len(headline) - 1
                 end_in_abstract = end - len(headline) - 1
                 masked_text = abstract[:start_in_abstract] + mask_token + abstract[end_in_abstract:]
                 masked_event["abstract"] = masked_text
         
-        # 添加掩码信息
+        # Add mask information
         masked_event["masked_info"] = entity_to_mask["value"]
-        masked_event["mask_type"] = entity_to_mask["type"]  # 可选：记录掩码类型
+        masked_event["mask_type"] = entity_to_mask["type"]  # Optional: Record mask type
         
         masked_events.append(masked_event)
     
-    # 保存为jsonl格式
+    # Save as jsonl format
     with open(output_file, 'w', encoding='utf-8') as f:
         for event in masked_events:
             f.write(json.dumps(event) + '\n')
     
-    print(f"已保存掩码处理后的数据集到 {output_file}，共 {len(masked_events)} 条记录")
+    print(f"The saved data set processed by masks is {output_file}, with a total of {len(masked_events)} records.")
     return masked_events
 
 def create_masked_dataset(events, output_file):
-    """对事件集合进行时间实体掩码处理并保存为jsonl格式"""
+    """Perform time entity mask processing on event sets and save them in jsonl format"""
     
     masked_events = []
     
@@ -779,31 +779,31 @@ def create_masked_dataset(events, output_file):
         headline = event.get("headline", "")
         abstract = event.get("abstract", "")
         
-        # 合并标题和摘要用于分析
+        # Merge titles and abstracts for analysis
         full_text = headline + " " + abstract
         text_lower = full_text.lower()
         
-        # 使用统一的函数提取年份和月份
+        # Use a unified function to extract years and months
         years = extract_years(full_text)
         
-        # 提取年份和月份及其在文本中的位置
+        # Extract year and month and its location in text
         year_entities = []
         month_entities = []
         
-        # 查找年份及其位置
+        # Find the year and its location
         for year in years:
-            # 对每个年份找到其在文本中的位置
+            # Find its position in the text for each year
             for match in re.finditer(r'\b' + re.escape(year) + r'\b', full_text):
                 start, end = match.span()
                 
-                # 确定年份在哪个组件中
+                # Determine which component the year is in
                 if start < len(headline):
-                    # 在标题中
+                    # in the title
                     start_in_component = start
                     end_in_component = end
                     component = "headline"
                 else:
-                    # 在摘要中
+                    # in the summary
                     start_in_component = start - len(headline) - 1
                     end_in_component = end - len(headline) - 1
                     component = "abstract"
@@ -818,55 +818,55 @@ def create_masked_dataset(events, output_file):
                     "type": "year"
                 })
         
-        # 查找月份及其位置
+        # Find the month and its location
         for standard_month, variants in MONTH_VARIANTS.items():
             for variant in variants:
                 variant_lower = variant.lower()
                 
-                # 找到该变体的所有匹配位置
+                # Find all matching positions for this variant
                 for match in re.finditer(r'\b' + re.escape(variant_lower) + r'\b', text_lower):
                     start, end = match.span()
                     
-                    # 应用验证规则
+                    # Apply verification rules
                     is_valid_month = False
                     
-                    # 严格月份需要特殊处理
+                    # Strict month requires special treatment
                     strict_months = ["may", "march", "august"]
                     if variant_lower in strict_months:
-                        # 获取单词级上下文
+                        # Get word-level context
                         before_words, current_word, after_words = get_word_context(text_lower, start, n_words=3)
                         
-                        # 排除Mar-a-Lago
+                        # Exclude Mar-a-Lago
                         if variant_lower == "mar" and any("a-lago" in word for word in after_words):
                             continue
                         
-                        # 验证规则
-                        # 1. 介词+月份
+                        # Verification Rules
+                        # 1. Preposition + Month
                         if before_words and before_words[-1] in ["in", "on", "of", "since", "during", "before", "after", "through", "until", "by", "at", "from"]:
                             is_valid_month = True
                         
-                        # 2. 月份+数字
+                        # 2. Month + Number
                         elif after_words and re.match(r'\d{1,2}(st|nd|rd|th)?', after_words[0]):
                             is_valid_month = True
                         
-                        # 3. 月份+年份
+                        # 3. Month + Year
                         elif after_words and re.match(r'(19|20)\d{2}', after_words[0]):
                             is_valid_month = True
                     else:
-                        # 非严格月份可以直接计入
+                        # Non-strict months can be counted directly
                         is_valid_month = True
                     
-                    # 如果验证通过，添加到月份实体列表
+                    # If verification is passed, add to the month entity list
                     if is_valid_month:
-                        # 确定实际月份在哪个部分(headline或abstract)
+                        # Determine which part of the actual month is (headline or abstract)
                         if start < len(headline):
-                            # 在标题中
+                            # in the title
                             start_in_component = start
                             end_in_component = end
                             component = "headline"
                         else:
-                            # 在摘要中
-                            start_in_component = start - len(headline) - 1  # 减1是因为中间有空格
+                            # in the summary
+                            start_in_component = start - len(headline) - 1  # minus 1 because there is a space in the middle
                             end_in_component = end - len(headline) - 1
                             component = "abstract"
                         
@@ -880,26 +880,26 @@ def create_masked_dataset(events, output_file):
                             "type": "month"
                         })
                 
-                # # 一个月份的所有匹配都处理完后，跳出内层循环
+                # # After all matches in a month are processed, the inner loop will break out.
                 # break
         
-        # 合并所有时间实体
+        # Merge all time entities
         all_entities = year_entities + month_entities
         
-        # 如果没有时间实体，跳过该事件
+        # If there is no time entity, skip the event
         if not all_entities:
             continue
         
-        # 随机选择一个时间实体进行掩码
+        # Randomly select a time entity for masking
         entity_to_mask = random.choice(all_entities)
         
-        # 创建掩码后的新闻对象
+        # Create a masked news object
         masked_event = event.copy()
         
-        # 确定掩码标记
+        # Determine the mask mark
         mask_token = "<YEAR>" if entity_to_mask["type"] == "year" else "<MONTH>"
         
-        # 应用掩码
+        # Apply mask
         component = entity_to_mask["component"]
         start = entity_to_mask["start_in_component"]
         end = entity_to_mask["end_in_component"]
@@ -908,61 +908,61 @@ def create_masked_dataset(events, output_file):
         masked_text = text[:start] + mask_token + text[end:]
         masked_event[component] = masked_text
         
-        # 添加掩码信息
+        # Add mask information
         masked_event["masked_info"] = entity_to_mask["value"]
-        masked_event["mask_type"] = entity_to_mask["type"]  # 可选：记录掩码类型
+        masked_event["mask_type"] = entity_to_mask["type"]  # Optional: Record mask type
         
         masked_events.append(masked_event)
     
-    # 保存为jsonl格式
+    # Save as jsonl format
     with open(output_file, 'w', encoding='utf-8') as f:
         for event in masked_events:
             f.write(json.dumps(event) + '\n')
     
-    print(f"已保存掩码处理后的数据集到 {output_file}，共 {len(masked_events)} 条记录")
+    print(f"The saved data set processed by masks is {output_file}, with a total of {len(masked_events)} records.")
     return masked_events
 
 def main():
-    # 使用与event_order_nyt.py相同的数据加载逻辑
-    input_dir = "/data/zliu331/temporal_reasoning/TinyZero/preliminary/original_ability_result"
+    # Use the same data loading logic as event_order_nyt.py
+    input_dir = "Time-R1/preliminary/original_ability_result"
     years = range(2016, 2024)  # Using data from 2016 to 2023
     
-    # 检查是否存在已保存的训练/测试数据划分
-    split_cache_file = "/data/zliu331/temporal_reasoning/TinyZero/datasets/nyt_train_test_split.pkl"
+    # Check whether there are saved training/test data divisions
+    split_cache_file = "Time-R1/datasets/nyt_train_test_split.pkl"
     
     if os.path.exists(split_cache_file):
-        # 如果存在缓存文件，直接加载已分割的数据
+        # If a cache file exists, directly load the divided data
         print(f"Loading train/test split from cache: {split_cache_file}")
         with open(split_cache_file, 'rb') as f:
             train_events, test_events = pickle.load(f)
     else:
-        # 如果不存在缓存文件，创建并保存分割
+        # If the cache file does not exist, create and save the segmentation
         print(f"Creating new train/test split and saving to: {split_cache_file}")
         train_events, test_events = load_events(input_dir, years)
         
-        # 保存分割结果供未来使用
+        # Save split results for future use
         with open(split_cache_file, 'wb') as f:
             pickle.dump((train_events, test_events), f)
     
-    # 在统计输出之后添加
-    print("\n=== 创建时间实体掩码数据集 ===")
+    # Add after statistics output
+    print("\n=== Create time entity mask dataset ===")
     
-    # 创建输出目录
-    masked_output_dir = "/data/zliu331/temporal_reasoning/TinyZero/datasets/masked_time_entity"
+    # Create an output directory
+    masked_output_dir = "Time-R1/datasets/masked_time_entity"
     os.makedirs(masked_output_dir, exist_ok=True)
     
-    # 处理训练集和测试集
+    # Process training sets and test sets
     train_output_file = os.path.join(masked_output_dir, "train_masked.jsonl")
     test_output_file = os.path.join(masked_output_dir, "test_masked.jsonl")
     
     create_masked_dataset(train_events, train_output_file)
     create_masked_dataset(test_events, test_output_file)
     
-    print(f"\n掩码数据集已保存到 {masked_output_dir}")
+    print(f"\nMask dataset has been saved to {masked_output_dir}")
 
 
 
-    # print(f"分析 {len(train_events)} 个训练事件和 {len(test_events)} 个测试事件...")
+    # print(f"Analyze {len(train_events)} training events and {len(test_events)} test events...")
     
     # train_results = analyze_time_entities(train_events)
     # test_results = analyze_time_entities(test_events)
@@ -970,11 +970,11 @@ def main():
     # train_years, train_months, train_events_with_years, train_events_with_months, train_year_examples, train_month_examples = train_results
     # test_years, test_months, test_events_with_years, test_events_with_months, test_year_examples, test_month_examples = test_results
 
-    # # 打印结果
+    # # Print results
     # print_results(train_years, train_months, test_years, test_months)
     
-    # # # 保存结果
-    # # output_dir = "/data/zliu331/temporal_reasoning/TinyZero/datasets/time_entity_stats"
+    # # # Save the results
+    # # output_dir = "Time-R1/datasets/time_entity_stats"
     # # os.makedirs(output_dir, exist_ok=True)
     
     # # output_file = os.path.join(output_dir, "time_entity_statistics.pkl")
@@ -989,114 +989,114 @@ def main():
     # # with open(output_file, 'wb') as f:
     # #     pickle.dump(results, f)
     
-    # # print(f"\n结果已保存到 {output_file}")
+    # # print(f"\nResult saved to {output_file}")
     
-    # # 输出总体统计信息
-    # print("\n=== 总体统计 ===")
-    # print(f"训练集中提到年份的总次数: {sum(train_years.values())}")
-    # print(f"训练集中提到月份的总次数: {sum(train_months.values())}")
-    # print(f"测试集中提到年份的总次数: {sum(test_years.values())}")
-    # print(f"测试集中提到月份的总次数: {sum(test_months.values())}")
+    # # Output overall statistics
+    # print("\n=== Overall Statistics ===")
+    # print(f"Total number of years mentioned in the training set: {sum(train_years.values())}")
+    # print(f"Total number of months mentioned in the training set: {sum(train_months.values())}")
+    # print(f"Total number of years mentioned in the test set: {sum(test_years.values())}")
+    # print(f"Total number of months mentioned in the test set: {sum(test_months.values())}")
     
-    # print(f"\n训练集中包含年份的事件数: {train_events_with_years} ({train_events_with_years/len(train_events)*100:.2f}%)")
-    # print(f"训练集中包含月份的事件数: {train_events_with_months} ({train_events_with_months/len(train_events)*100:.2f}%)")
-    # print(f"测试集中包含年份的事件数: {test_events_with_years} ({test_events_with_years/len(test_events)*100:.2f}%)")
-    # print(f"测试集中包含月份的事件数: {test_events_with_months} ({test_events_with_months/len(test_events)*100:.2f}%)")
+    # print(f"\nNumber of events in the training set contains years: {train_events_with_years} ({train_events_with_years/len(train_events)*100:.2f}%)")
+    # print(f"Number of events in the training set contains months: {train_events_with_months} ​​({train_events_with_months/len(train_events)*100:.2f}%)")
+    # print(f"Number of events in the test set contains years: {test_events_with_years} ({test_events_with_years/len(test_events)*100:.2f}%)")
+    # print(f"Number of events in the test set contains months: {test_events_with_months} ​​({test_events_with_months/len(test_events)*100:.2f}%)")
     
-    # print("\n最常见的年份:")
+    # print("\nMost common year:")
     # for year, count in train_years.most_common(5):
     #     print(f"  {year}: {count}")
     
-    # print("\n最常见的月份:")
+    # print("\nMost Common Month:")
     # for month, count in train_months.most_common(5):
     #     print(f"  {month}: {count}")
 
-    # # # 打印识别示例
-    # # print("\n=== 年份识别示例 ===")
+    # # # Print recognition example
+    # # print("\n=== Year Identification Example ===")
     # # for i, example in enumerate(train_year_examples[:3], 1):
-    # #     print(f"示例 {i}:")
-    # #     print(f"文本: {example['text']}...")
-    # #     print(f"识别到的年份: {example['years']}")
+    # # print(f"Example {i}:")
+    # # print(f"text: {example['text']}...")
+    # # print(f"Recognized year: {example['years']}")
     # #     print()
     
-    # # print("\n=== 月份识别示例 ===")
+    # # print("\n=== Month recognition example ===")
     # # for i, example in enumerate(train_month_examples[:3], 1):
-    # #     print(f"示例 {i}:")
-    # #     print(f"文本: {example['text']}...")
-    # #     print(f"识别到的月份: {example['months']}")
+    # # print(f"Example {i}:")
+    # # print(f"text: {example['text']}...")
+    # # print(f"Recognized month: {example['months']}")
     # #     print()
-    # # print("\n正在随机选择和打印时间实体识别示例...")
+    # # print("\nStop selecting and printing time entity recognition example...")
     # # print_random_examples(train_year_examples, train_month_examples, count=100) 
 
 
-    # print("\n正在选择和打印特定月份的识别示例...")
+    # print("\nSelecting and printing a specific month's identification example...")
     # print_specific_month_examples(train_month_examples, "June", count=30)  
     # print_specific_month_examples(train_month_examples, "July", count=30)
 
 
-    # print("\n=== 每条新闻中时间实体(年份+月份)总出现次数统计 ===")
+    # print("\n=== Statistics on the total number of occurrences of time entities (year + month) in each news ===")
     # train_combined_dist = count_combined_time_entity_distribution(train_events)
     # test_combined_dist = count_combined_time_entity_distribution(test_events)
 
-    # print("\n每条新闻中时间实体(年份+月份)总出现次数分布:")
-    # print("训练集:")
+    # print("\nDistribution of total occurrences of time entities (year + month) in each news:")
+    # print("training set:")
     # for count in sorted(train_combined_dist.keys()):
-    #     print(f"  出现{count}次时间实体的新闻数: {train_combined_dist[count]} ({train_combined_dist[count]/len(train_events)*100:.2f}%)")
+    # print(f" Number of news that the {count} time entity appears: {train_combined_dist[count]} ({train_combined_dist[count]/len(train_events)*100:.2f}%)")
 
-    # print("\n测试集:")
+    # print("\nTest Set:")
     # for count in sorted(test_combined_dist.keys()):
-    #     print(f"  出现{count}次时间实体的新闻数: {test_combined_dist[count]} ({test_combined_dist[count]/len(test_events)*100:.2f}%)")
+    # print(f" Number of news that the {count} time entity appears: {test_combined_dist[count]} ({test_combined_dist[count]/len(test_events)*100:.2f}%)")
 
-    # # print("\n=== 每条新闻中时间实体出现次数统计 ===")
+    # # print("\n=== Statistics on the number of time entities appearing in each news ===")
     # # train_year_dist, train_month_dist = count_time_entity_distribution(train_events)
     # # test_year_dist, test_month_dist = count_time_entity_distribution(test_events)
     
-    # # print("\n每条新闻中年份出现次数分布:")
-    # # print("训练集:")
+    # # print("\nDistribution of years in each news:")
+    # # print("training set:")
     # # for count in sorted(train_year_dist.keys()):
-    # #     print(f"  出现{count}次年份的新闻数: {train_year_dist[count]} ({train_year_dist[count]/len(train_events)*100:.2f}%)")
+    # # print(f" Number of news in the following year of {count}: {train_year_dist[count]} ({train_year_dist[count]/len(train_events)*100:.2f}%)")
     
-    # # print("\n测试集:")
+    # # print("\nTest Set:")
     # # for count in sorted(test_year_dist.keys()):
-    # #     print(f"  出现{count}次年份的新闻数: {test_year_dist[count]} ({test_year_dist[count]/len(test_events)*100:.2f}%)")
+    # # print(f" Number of news in the following year of {count}: {test_year_dist[count]} ({test_year_dist[count]/len(test_events)*100:.2f}%)")
     
-    # # print("\n每条新闻中月份出现次数分布(严格验证后):")
-    # # print("训练集:")
+    # # print("\nDistribution of the number of occurrences in each news (after strict verification):")
+    # # print("training set:")
     # # for count in sorted(train_month_dist.keys()):
-    # #     print(f"  出现{count}次月份的新闻数: {train_month_dist[count]} ({train_month_dist[count]/len(train_events)*100:.2f}%)")
+    # # print(f" Number of news in the month after {count} appears: {train_month_dist[count]} ({train_month_dist[count]/len(train_events)*100:.2f}%)")
     
-    # # print("\n测试集:")
+    # # print("\nTest Set:")
     # # for count in sorted(test_month_dist.keys()):
-    # #     print(f"  出现{count}次月份的新闻数: {test_month_dist[count]} ({test_month_dist[count]/len(test_events)*100:.2f}%)")
+    # # print(f" Number of news in the month after {count} appears: {test_month_dist[count]} ({test_month_dist[count]/len(test_events)*100:.2f}%)")
 
 
 def print_random_masked_examples(file_path, count=30):
-    """从掩码数据集中随机打印指定数量的示例"""
-    # 读取JSONL文件
+    """Examples of randomly printing a specified number from the masked dataset"""
+    # Read JSONL file
     examples = []
     with open(file_path, 'r', encoding='utf-8') as f:
         for line in f:
             examples.append(json.loads(line.strip()))
     
-    print(f"文件共有 {len(examples)} 条记录")
+    print(f"There are {len(examples)} records in the file")
     
     print(examples[0], examples[1])
-    # # 随机选择指定数量的示例
+    # # Example of randomly selecting a specified number
     # sample_count = min(count, len(examples))
     # sampled_examples = random.sample(examples, sample_count)
     
-    # # 打印选中的示例
+    # # Print selected example
     # for i, example in enumerate(sampled_examples, 1):
     #     headline = example.get("headline", "")
     #     abstract = example.get("abstract", "")
     #     masked_info = example.get("masked_info", "")
     #     mask_type = example.get("mask_type", "")
         
-    #     print(f"\n示例 {i}/{sample_count}:")
-    #     print(f"标题: {headline}")
-    #     print(f"摘要: {abstract}")
-    #     print(f"掩码信息: {masked_info}")
-    #     print(f"掩码类型: {mask_type}")
+    # print(f"\nExample {i}/{sample_count}:")
+    # print(f"Title: {headline}")
+    # print(f"Abstract: {abstract}")
+    # print(f"Mask Information: {masked_info}")
+    # print(f"Mask type: {mask_type}")
     #     print("-" * 80)
 
 
@@ -1104,11 +1104,11 @@ def print_random_masked_examples(file_path, count=30):
 if __name__ == "__main__":
     # main()
 
-    train_file = "/data/zliu331/temporal_reasoning/TinyZero/datasets/masked_time_entity/train_masked.jsonl"
-    test_file = "/data/zliu331/temporal_reasoning/TinyZero/datasets/masked_time_entity/test_masked.jsonl"
+    train_file = "Time-R1/datasets/masked_time_entity/train_masked.jsonl"
+    test_file = "Time-R1/datasets/masked_time_entity/test_masked.jsonl"
 
-    print("=== 训练集随机示例 ===")
+    print("=== Random example of training set ===")
     print_random_masked_examples(train_file, count=30)
 
-    print("\n=== 测试集随机示例 ===")
+    print("\n=== Random example of test set ===")
     print_random_masked_examples(test_file, count=30)

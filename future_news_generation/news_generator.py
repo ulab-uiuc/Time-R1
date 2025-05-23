@@ -9,9 +9,7 @@ import argparse
 import re
 
 def load_model_and_tokenizer(model_path):
-    """
-    加载预训练的模型和分词器
-    """
+    """Loading pretrained models and word participles"""
     print(f"Loading model from {model_path}")
     tokenizer = AutoTokenizer.from_pretrained(model_path)
     model = AutoModelForCausalLM.from_pretrained(
@@ -22,13 +20,11 @@ def load_model_and_tokenizer(model_path):
     return model, tokenizer
 
 def create_future_news_prompt_single(target_date, seed_topic=None):
-    """
-    创建用于生成未来新闻的提示
+    """Create tips for generating future news
     
-    参数:
-        target_date: 目标日期，格式"YYYY-MM"
-        seed_topic: 可选的主题种子词，引导生成特定领域的新闻
-    """
+    parameter:
+        target_date: target date, format "YYYY-MM"
+        seed_topic: optional topic seed words to guide the generation of news in specific fields"""
 #     if seed_topic:
 #         prompt = f"""Please generate a realistic news headline and abstract for a news article that might be published in {target_date}. 
 # The news should be about {seed_topic}. Make sure it aligns with current trends and likely future developments.
@@ -57,7 +53,7 @@ def create_future_news_prompt_single(target_date, seed_topic=None):
     "Politics": "political developments and elections"
     }
 
-    # 在创建prompt时使用映射
+    # Use maps when creating a propt
     topic_description = topic_mapping.get(seed_topic, seed_topic) if seed_topic else ""
     topic_instruction = f"about {topic_description}" if seed_topic else ""
     
@@ -88,7 +84,7 @@ def create_future_news_prompt_single(target_date, seed_topic=None):
     return prompt
 
 def create_future_news_prompt(target_date, seed_topic=None):
-    """创建用于生成未来新闻的提示"""
+    """Create tips for generating future news"""
     topic_mapping = {
         "Foreign": "international affairs and global politics",
         "Business": "business, economics and financial markets",
@@ -100,7 +96,7 @@ def create_future_news_prompt(target_date, seed_topic=None):
         "Politics": "political developments and elections"
     }
 
-    # 在创建prompt时使用映射
+    # Use maps when creating a propt
     topic_description = topic_mapping.get(seed_topic, seed_topic) if seed_topic else ""
     topic_instruction = f"about {topic_description}" if seed_topic else ""
     
@@ -140,13 +136,11 @@ def create_future_news_prompt(target_date, seed_topic=None):
     return prompt
 
 def extract_headline_abstract(text):
-    """
-    从生成的文本中提取标题和摘要
-    """
+    """Extract title and summary from generated text"""
     headline = None
     abstract = None
     
-    # 查找标题
+    # Find title
     headline_start = text.find("Headline:")
     if headline_start != -1:
         headline_start += len("Headline:")
@@ -154,7 +148,7 @@ def extract_headline_abstract(text):
         if headline_end != -1:
             headline = text[headline_start:headline_end].strip()
     
-    # 查找摘要
+    # Find summary
     abstract_start = text.find("Abstract:")
     if abstract_start != -1:
         abstract_start += len("Abstract:")
@@ -163,40 +157,38 @@ def extract_headline_abstract(text):
     return headline, abstract
 
 def extract_multiple_headlines_abstracts(text):
-    """
-    从生成的文本中提取3条新闻的标题和摘要
-    """
+    """Extract the title and summary of 3 news from generated text"""
     results = []
     
-    # 查找<answer>部分
+    # Find the <answer> section
     answer_pattern = r'<answer>(.*?)</answer>'
     answer_match = re.search(answer_pattern, text, re.DOTALL)
     
     if answer_match:
         answer_text = answer_match.group(1).strip()
     else:
-        answer_text = text  # 如果没有answer标签，使用整个文本
+        answer_text = text  # If there is no answer tag, use the entire text
     
-    # 定义NEWS块模式
+    # Define NEWS block pattern
     news_pattern = r'NEWS\s*(\d+):\s*Headline:\s*(.*?)\s*Abstract:\s*(.*?)(?=NEWS\s*\d+:|$)'
     news_matches = re.findall(news_pattern, answer_text, re.DOTALL)
     
     if news_matches:
-        # 使用正则表达式找到的NEWS块
+        # NEWS block found using regular expressions
         for _, headline, abstract in news_matches:
             headline = headline.strip()
             abstract = abstract.strip()
             if headline and abstract:
                 results.append({"headline": headline, "abstract": abstract})
     else:
-        # 尝试另一种格式：每个标题和摘要分开
+        # Try another format: each title and summary separate
         headline_pattern = r'Headline:\s*(.*?)\s*(?=Abstract:|$)'
         abstract_pattern = r'Abstract:\s*(.*?)(?=Headline:|$)'
         
         headlines = re.findall(headline_pattern, answer_text, re.DOTALL)
         abstracts = re.findall(abstract_pattern, answer_text, re.DOTALL)
         
-        # 确保标题和摘要的数量相等
+        # Make sure the number of titles and summary is equal
         for i in range(min(len(headlines), len(abstracts))):
             headline = headlines[i].strip()
             abstract = abstracts[i].strip()
@@ -207,9 +199,7 @@ def extract_multiple_headlines_abstracts(text):
 
 def generate_future_news(model, tokenizer, prompt, num_samples=1, 
                          temperature=0.7, max_new_tokens=256):
-    """
-    生成未来新闻
-    """
+    """Generate future news"""
     inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
     
     results = []
@@ -224,7 +214,7 @@ def generate_future_news(model, tokenizer, prompt, num_samples=1,
                 pad_token_id=tokenizer.eos_token_id
             )
         
-        # 只保留生成的部分
+        # Only the generated part is preserved
         generated_text = tokenizer.decode(outputs[0][inputs.input_ids.shape[1]:], skip_special_tokens=True)
         headline, abstract = extract_headline_abstract(generated_text)
         
@@ -238,8 +228,8 @@ def generate_future_news(model, tokenizer, prompt, num_samples=1,
     return results
 
 def generate_future_news_batch_single(model, tokenizer, prompts, temperature=1, max_new_tokens=1024):
-    """批量生成未来新闻"""
-    # 批量编码所有提示
+    """Bulk future news"""
+    # All prompts for batch encoding
     inputs = tokenizer(prompts, return_tensors="pt", padding=True).to(model.device)
     
     with torch.no_grad():
@@ -253,12 +243,12 @@ def generate_future_news_batch_single(model, tokenizer, prompts, temperature=1, 
             pad_token_id=tokenizer.eos_token_id
         )
     
-    # 解码生成的文本
+    # Decode the generated text
     results = []
     for i, output in enumerate(outputs):
-        # 只保留生成的部分
+        # Only the generated part is preserved
         input_length = inputs.input_ids.shape[1]
-        if inputs.input_ids.shape[0] > 1:  # 批量处理时
+        if inputs.input_ids.shape[0] > 1:  # During batch processing
             input_length = len(inputs.input_ids[i])
         
         generated_text = tokenizer.decode(output[input_length:], skip_special_tokens=True)
@@ -274,8 +264,8 @@ def generate_future_news_batch_single(model, tokenizer, prompts, temperature=1, 
     return results
 
 def generate_future_news_batch(model, tokenizer, prompts, temperature=1, max_new_tokens=1024):
-    """批量生成未来新闻，每个prompt生成3条新闻"""
-    # 批量编码所有提示
+    """Generate future news in batches, and generate 3 news per prompt"""
+    # All prompts for batch encoding
     inputs = tokenizer(prompts, return_tensors="pt", padding=True).to(model.device)
     
     with torch.no_grad():
@@ -289,23 +279,23 @@ def generate_future_news_batch(model, tokenizer, prompts, temperature=1, max_new
             pad_token_id=tokenizer.eos_token_id
         )
     
-    # 解码生成的文本
+    # Decode the generated text
     all_results = []
     for i, output in enumerate(outputs):
-        # 只保留生成的部分
+        # Only the generated part is preserved
         input_length = inputs.input_ids.shape[1]
         if inputs.input_ids.shape[0] > 1 and len(inputs.input_ids[i]) < input_length:
             input_length = len(inputs.input_ids[i])
         
         generated_text = tokenizer.decode(output[input_length:], skip_special_tokens=True)
         
-        # 提取多条新闻
+        # Extract multiple news
         news_items = extract_multiple_headlines_abstracts(generated_text)
         
-        # 为每条新闻添加原始生成文本
+        # Add original generated text to each news
         for item in news_items:
             item["original_generation"] = generated_text
-            item["prompt_index"] = i  # 记录这条新闻来自哪个提示
+            item["prompt_index"] = i  # Record which tips this news comes from
         
         all_results.extend(news_items)
     
@@ -313,25 +303,23 @@ def generate_future_news_batch(model, tokenizer, prompts, temperature=1, max_new
 
 def generate_future_news_dataset_single(model, tokenizer, target_date, output_file, 
                                 num_samples=1024, batch_size=16, topic_distribution=None):
-    """
-    生成未来新闻数据集
+    """Generate future news datasets
     
-    参数:
-        topic_distribution: 一个字典，指定不同主题的比例，例如
-                           {"politics": 0.2, "technology": 0.3, "health": 0.1, 
-                            "economy": 0.2, "sports": 0.1, "other": 0.1}
-    """
+    parameter:
+        topic_distribution: A dictionary that specifies the proportion of different topics, e.g.
+                           {"politics": 0.2, "technology": 0.3, "health": 0.1,
+                            "economy": 0.2, "sports": 0.1, "other": 0.1}"""
     all_results = []
     
     if topic_distribution:
-        # 根据主题分布生成新闻
+        # Generate news based on topic distribution
         topics = list(topic_distribution.keys())
         topic_weights = list(topic_distribution.values())
         
-        # 为每个主题分配样本数量
+        # Assign samples to each topic
         topic_counts = {topic: int(num_samples * weight) for topic, weight in topic_distribution.items()}
         
-        # 确保总数等于num_samples
+        # Make sure the total is equal to num_samples
         total_assigned = sum(topic_counts.values())
         if total_assigned < num_samples:
             topic_counts[random.choice(topics)] += (num_samples - total_assigned)
@@ -344,16 +332,16 @@ def generate_future_news_dataset_single(model, tokenizer, target_date, output_fi
             for i in tqdm(range(0, count, batch_size)):
                 batch_count = min(batch_size, count - i)
                 
-                # 一次性准备多个提示
+                # Prepare multiple tips at once
                 batch_prompts = [
                     create_future_news_prompt(target_date, seed_topic=topic if topic != "other" else None)
                     for _ in range(batch_count)
                 ]
                 
-                # 批量生成
+                # Batch generation
                 batch_results = generate_future_news_batch(model, tokenizer, batch_prompts)
                 
-                # 处理结果
+                # Processing results
                 for result in batch_results:
                     result["topic"] = topic
                     result["target_date"] = target_date
@@ -368,21 +356,21 @@ def generate_future_news_dataset_single(model, tokenizer, target_date, output_fi
             #             result["target_date"] = target_date
             #             all_results.append(result)
     else:
-        # 生成通用新闻
+        # Generate general news
         print(f"Generating {num_samples} generic news samples")
         for i in tqdm(range(0, count, batch_size)):
             batch_count = min(batch_size, count - i)
             
-            # 一次性准备多个提示
+            # Prepare multiple tips at once
             batch_prompts = [
                 create_future_news_prompt(target_date, seed_topic=topic if topic != "other" else None)
                 for _ in range(batch_count)
             ]
             
-            # 批量生成
+            # Batch generation
             batch_results = generate_future_news_batch(model, tokenizer, batch_prompts)
             
-            # 处理结果
+            # Processing results
             for result in batch_results:
                 result["topic"] = topic
                 result["target_date"] = target_date
@@ -396,7 +384,7 @@ def generate_future_news_dataset_single(model, tokenizer, target_date, output_fi
         #             result["target_date"] = target_date
         #             all_results.append(result)
     
-    # 保存结果
+    # Save the results
     df = pd.DataFrame(all_results)
     df.to_json(output_file, orient="records", lines=True)
     print(f"Generated {len(all_results)} samples, saved to {output_file}")
@@ -404,21 +392,19 @@ def generate_future_news_dataset_single(model, tokenizer, target_date, output_fi
     return all_results
 
 def generate_future_news_dataset(model, tokenizer, target_date, output_file, prompts_per_topic=10, batch_size=80):
-    """
-    并行生成所有主题的未来新闻数据集
+    """Generate future news datasets for all topics in parallel
     
-    参数:
-        prompts_per_topic: 每个主题生成的提示数量
-        batch_size: 一次处理的提示数量
-    """
+    parameter:
+        prompts_per_topic: Number of prompts generated by each topic
+        batch_size: Number of prompts to be processed at one time"""
     all_results = []
     
-    # 所有需要生成的主题
+    # All topics that need to be generated
     topics = ["Foreign", "Business", "OpEd", "National", "Washington", "Metro", "Science", "Politics"]
     
-    # 为每个主题创建prompts_per_topic个提示
+    # Create prompts_per_topic for each topic
     all_prompts = []
-    prompt_topic_map = []  # 记录每个提示对应的主题
+    prompt_topic_map = []  # Record the topic corresponding to each prompt
     
     print(f"Creating prompts for {len(topics)} topics, {prompts_per_topic} prompts per topic")
     
@@ -428,9 +414,9 @@ def generate_future_news_dataset(model, tokenizer, target_date, output_file, pro
             all_prompts.append(prompt)
             prompt_topic_map.append(topic)
     
-    # 按批次处理所有提示
+    # Process all prompts by batch
     total_prompts = len(all_prompts)
-    total_batches = (total_prompts + batch_size - 1) // batch_size  # 向上取整
+    total_batches = (total_prompts + batch_size - 1) // batch_size  # Round up
     
     print(f"Processing {total_prompts} prompts in {total_batches} batches (size {batch_size})")
     
@@ -438,24 +424,24 @@ def generate_future_news_dataset(model, tokenizer, target_date, output_file, pro
         start_idx = batch_idx * batch_size
         end_idx = min(start_idx + batch_size, total_prompts)
         
-        # 提取当前批次的提示
+        # Tips for extracting the current batch
         batch_prompts = all_prompts[start_idx:end_idx]
         
-        # 批量生成新闻
+        # Bulk news generation
         batch_results = generate_future_news_batch(model, tokenizer, batch_prompts, max_new_tokens=1024)
         
-        # 为每条新闻添加主题和日期信息
+        # Add topic and date information to each news
         for result in batch_results:
             prompt_idx = result["prompt_index"] + start_idx
             result["topic"] = prompt_topic_map[prompt_idx]
             result["target_date"] = target_date
-            # 删除不需要的中间字段
+            # Delete unwanted intermediate fields
             if "prompt_index" in result:
                 del result["prompt_index"]
             
             all_results.append(result)
     
-    # 保存结果
+    # Save the results
     df = pd.DataFrame(all_results)
     df.to_json(output_file, orient="records", lines=True)
     print(f"Generated {len(all_results)} news items from {total_prompts} prompts, saved to {output_file}")
@@ -463,15 +449,13 @@ def generate_future_news_dataset(model, tokenizer, target_date, output_file, pro
     return all_results
 
 def generate_multi_month_news_dataset(model, tokenizer, start_month, end_month, output_dir, prompts_per_topic=10, batch_size=80):
-    """
-    为多个月份生成未来新闻数据集
+    """Generate future news datasets for multiple months
     
-    参数:
-        start_month: 起始月份 (YYYY-MM格式)
-        end_month: 结束月份 (YYYY-MM格式)
-        output_dir: 输出目录
-    """
-    # 生成月份列表
+    parameter:
+        start_month: Start month (YYYY-MM format)
+        end_month: end month (YYYY-MM format)
+        output_dir: output directory"""
+    # Generate a list of months
     months = []
     start_year, start_month_num = map(int, start_month.split("-"))
     end_year, end_month_num = map(int, end_month.split("-"))
@@ -485,15 +469,15 @@ def generate_multi_month_news_dataset(model, tokenizer, start_month, end_month, 
             current_month = 1
             current_year += 1
     
-    print(f"将为以下{len(months)}个月份生成数据: {', '.join(months)}")
+    print(f"Data will be generated for the following {len(months)} months: {', '.join(months)}")
     
-    # 为每个月份生成数据
+    # Generate data for each month
     all_results = {}
     for target_date in months:
-        print(f"\n=== 生成 {target_date} 月份的新闻 ===")
+        print(f"\n=== Generate {target_date} month news ===")
         output_file = os.path.join(output_dir, f"future_news_{target_date}.jsonl")
         
-        # 为当前月份生成数据
+        # Generate data for the current month
         results = generate_future_news_dataset(
             model, 
             tokenizer, 
@@ -505,10 +489,10 @@ def generate_multi_month_news_dataset(model, tokenizer, start_month, end_month, 
         
         all_results[target_date] = len(results)
     
-    # 汇总统计
-    print("\n=== 生成完成 ===")
+    # Summary statistics
+    print("\n=== Generation completed ===")
     for month, count in all_results.items():
-        print(f"{month}: 生成了 {count} 条新闻")
+        print(f"{month}: {count} news generated")
     
     return all_results
 
@@ -523,12 +507,12 @@ def main_single():
     
     args = parser.parse_args()
     
-    # 加载模型
+    # Loading the model
     model, tokenizer = load_model_and_tokenizer(args.model_path)
-    model.to("cuda:9")  # 指定GPU号9
-    model.eval()  # 切换到评估模式
+    model.to("cuda:9")  # Specify GPU number 9
+    model.eval()  # Switch to evaluation mode
     
-    # 设置主题分布（如果需要）
+    # Set the topic distribution (if required)
     topic_distribution = None
     if args.balanced:
         topic_distribution = {
@@ -542,7 +526,7 @@ def main_single():
             "Politics": 0.04
         }
     
-    # 生成数据集
+    # Generate dataset
     generate_future_news_dataset(
         model, 
         tokenizer, 
@@ -563,12 +547,12 @@ def main_multi_news_generation():
     
     args = parser.parse_args()
     
-    # 加载模型
+    # Loading the model
     model, tokenizer = load_model_and_tokenizer(args.model_path)
-    model.to("cuda:6")  # 指定GPU号9
-    model.eval()  # 切换到评估模式
+    model.to("cuda:6")  # Specify GPU number 9
+    model.eval()  # Switch to evaluation mode
     
-    # 生成数据集
+    # Generate dataset
     generate_future_news_dataset(
         model, 
         tokenizer, 
@@ -580,8 +564,8 @@ def main_multi_news_generation():
 
 def main():
     parser = argparse.ArgumentParser(description="Generate future news articles")
-    parser.add_argument("--model_path", type=str, default="/data/zliu331/temporal_reasoning/TinyZero/check_points_time_prediction_zero/time_prediction/zero/actor/global_step_360", help="Path to the trained model")
-    parser.add_argument("--output_dir", type=str, default="/data/zliu331/temporal_reasoning/TinyZero/future_news_generation/results/future_news_test", help="Output directory")
+    parser.add_argument("--model_path", type=str, default="Time-R1/check_points_time_prediction_zero/time_prediction/zero/actor/global_step_360", help="Path to the trained model")
+    parser.add_argument("--output_dir", type=str, default="Time-R1/future_news_generation/results/future_news_test", help="Output directory")
     parser.add_argument("--start_month", type=str, default="2024-07", help="Start month in YYYY-MM format")
     parser.add_argument("--end_month", type=str, default="2025-02", help="End month in YYYY-MM format")
     parser.add_argument("--prompts_per_topic", type=int, default=10, help="Number of prompts per topic")
@@ -589,15 +573,15 @@ def main():
     
     args = parser.parse_args()
     
-    # 确保输出目录存在
+    # Make sure the output directory exists
     os.makedirs(args.output_dir, exist_ok=True)
     
-    # 加载模型
+    # Loading the model
     model, tokenizer = load_model_and_tokenizer(args.model_path)
-    model.to("cuda")  # 指定GPU号
-    model.eval()  # 切换到评估模式
+    model.to("cuda")  # Specify the GPU number
+    model.eval()  # Switch to evaluation mode
     
-    # 生成多月份数据集
+    # Generate multi-month dataset
     generate_multi_month_news_dataset(
         model, 
         tokenizer, 

@@ -1192,20 +1192,20 @@ def compute_score(solution_str, ground_truth, bonus=0.05, alpha=0.1, tag_bonus_e
         elif "event_pub_date" in ground_truth:
             task_type = "time_inferring"
     
+    
     # Select the appropriate scoring function according to the task type
     if task_type == "time_difference":
-        return compute_time_diff_score(solution_str, ground_truth, bonus, alpha, tag_bonus_each)
+        return compute_time_diff_score_fixed_alpha(solution_str, ground_truth, bonus, alpha, tag_bonus_each)
     elif task_type == "time_ordering":
-        return compute_time_order_score(solution_str, ground_truth, bonus, alpha, tag_bonus_each)
+        return compute_time_order_score_fixed_alpha(solution_str, ground_truth, bonus, alpha, tag_bonus_each)
     elif task_type == "time_completion":
-        return compute_time_completion_score(solution_str, ground_truth, bonus, alpha, tag_bonus_each)
+        return compute_time_completion_score_fixed_alpha(solution_str, ground_truth, bonus, alpha, tag_bonus_each)
     elif task_type == "time_inferring":
-        return compute_time_inferring_score(solution_str, ground_truth, bonus, alpha, tag_bonus_each)
+        return compute_time_inferring_score_fixed_alpha(solution_str, ground_truth, bonus, alpha, tag_bonus_each)
     else:
-    # Default time inference score
-        return compute_time_inferring_score(solution_str, ground_truth, bonus, alpha, tag_bonus_each)
+        # Default time inference score
+        return compute_time_inferring_score_fixed_alpha(solution_str, ground_truth, bonus, alpha, tag_bonus_each)
 
-    
 
 
 

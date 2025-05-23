@@ -187,7 +187,7 @@ def load_events(input_dir, years, split_ratio=0.9, random_seed=1024):
                 }
                 all_events.append(event)
     
-    # Split events into train and test sets - 与event_order_nyt.py完全相同
+    # Split events into train and test sets - exactly the same as event_order_nyt.py
     random.seed(random_seed)
     random.shuffle(all_events)
     split_index = int(split_ratio * len(all_events))
@@ -395,39 +395,39 @@ def build_time_inferring_dataset(events, output_file, num_samples, split_name):
     print(f"Finished! {len(samples)} {split_name} samples saved to {output_file}.")
 
 if __name__ == "__main__":
-    # 使用与event_order_nyt.py相同的数据加载逻辑
-    input_dir = "/data/zliu331/temporal_reasoning/TinyZero/preliminary/original_ability_result"
+    # Use the same data loading logic as event_order_nyt.py
+    input_dir = "Time-R1/preliminary/original_ability_result"
     years = range(2016, 2024)  # Using data from 2016 to 2023
     
-    # 检查是否存在已保存的训练/测试数据划分
-    split_cache_file = "/data/zliu331/temporal_reasoning/TinyZero/datasets/nyt_train_test_split.pkl"
+    # Check whether there are saved training/test data divisions
+    split_cache_file = "Time-R1/datasets/nyt_train_test_split.pkl"
     
     if os.path.exists(split_cache_file):
-        # 如果存在缓存文件，直接加载已分割的数据
+        # If a cache file exists, directly load the divided data
         print(f"Loading train/test split from cache: {split_cache_file}")
         with open(split_cache_file, 'rb') as f:
             train_events, test_events = pickle.load(f)
     else:
-        # 如果不存在缓存文件，创建并保存分割
+        # If the cache file does not exist, create and save the segmentation
         print(f"Creating new train/test split and saving to: {split_cache_file}")
         train_events, test_events = load_events(input_dir, years)
         
-        # 保存分割结果供未来使用
+        # Save split results for future use
         with open(split_cache_file, 'wb') as f:
             pickle.dump((train_events, test_events), f)
     
-    # 构建训练数据集 (50,000 samples)
+    # Build training dataset (50,000 samples)
     build_time_difference_dataset(
         train_events,
-        output_file="/data/zliu331/temporal_reasoning/TinyZero/datasets/train_time_difference.parquet",
+        output_file="Time-R1/datasets/train_time_difference.parquet",
         num_samples=50000,
         split_name="train"
     )
     
-    # 构建测试数据集 (5,000 samples)
+    # Build test datasets (5,000 samples)
     build_time_difference_dataset(
         test_events,
-        output_file="/data/zliu331/temporal_reasoning/TinyZero/datasets/test_time_difference.parquet",
+        output_file="Time-R1/datasets/test_time_difference.parquet",
         num_samples=5000,
         split_name="test"
     )
@@ -435,7 +435,7 @@ if __name__ == "__main__":
     # Build training dataset (40,000 samples)
     build_time_ordering_dataset(
         train_events,
-        output_file="/data/zliu331/temporal_reasoning/TinyZero/datasets/train_time_ordering.parquet",
+        output_file="Time-R1/datasets/train_time_ordering.parquet",
         num_samples=50000,
         split_name="train"
     )
@@ -443,57 +443,57 @@ if __name__ == "__main__":
     # Build test dataset (4,000 samples)
     build_time_ordering_dataset(
         test_events,
-        output_file="/data/zliu331/temporal_reasoning/TinyZero/datasets/test_time_ordering.parquet",
+        output_file="Time-R1/datasets/test_time_ordering.parquet",
         num_samples=5000,
         split_name="test"
     )
 
-    # 构建直接时间推断任务数据集
+    # Build a direct time inference task dataset
     build_time_inferring_dataset(
         train_events,
-        output_file="/data/zliu331/temporal_reasoning/TinyZero/datasets/train_time_inferring.parquet",
-        num_samples=50000,  # 如果数据足够，创建50000个样本 
+        output_file="Time-R1/datasets/train_time_inferring.parquet",
+        num_samples=50000,  # If the data is sufficient, create 50,000 samples
         split_name="train"
     )
     
     build_time_inferring_dataset(
         test_events,
-        output_file="/data/zliu331/temporal_reasoning/TinyZero/datasets/test_time_inferring.parquet",
-        num_samples=5000,   # 如果数据足够，创建5000个测试样本
+        output_file="Time-R1/datasets/test_time_inferring.parquet",
+        num_samples=5000,   # If the data is sufficient, create 5000 test samples
         split_name="test"
     )
 
-    # 加载掩码处理过的数据集
-    train_masked_file = "/data/zliu331/temporal_reasoning/TinyZero/datasets/masked_time_entity/train_masked.jsonl"
-    test_masked_file = "/data/zliu331/temporal_reasoning/TinyZero/datasets/masked_time_entity/test_masked.jsonl"
+    # Load the dataset processed by the mask
+    train_masked_file = "Time-R1/datasets/masked_time_entity/train_masked.jsonl"
+    test_masked_file = "Time-R1/datasets/masked_time_entity/test_masked.jsonl"
     
     train_masked_events = []
     test_masked_events = []
     
-    # 加载训练集
+    # Load the training set
     with open(train_masked_file, 'r', encoding='utf-8') as f:
         for line in f:
             train_masked_events.append(json.loads(line.strip()))
     
-    # 加载测试集
+    # Load the test set
     with open(test_masked_file, 'r', encoding='utf-8') as f:
         for line in f:
             test_masked_events.append(json.loads(line.strip()))
     
     print(f"Loaded {len(train_masked_events)} masked training events and {len(test_masked_events)} masked test events.")
     
-    # 构建时间实体补全任务数据集
+    # Build time entity completion task dataset
     build_time_completion_dataset(
         train_masked_events,
-        output_file="/data/zliu331/temporal_reasoning/TinyZero/datasets/train_time_completion.parquet",
-        num_samples=50000,  # 如果数据足够，创建50000个样本
+        output_file="Time-R1/datasets/train_time_completion.parquet",
+        num_samples=50000,  # If the data is sufficient, create 50,000 samples
         split_name="train"
     )
     
     build_time_completion_dataset(
         test_masked_events,
-        output_file="/data/zliu331/temporal_reasoning/TinyZero/datasets/test_time_completion.parquet",
-        num_samples=5000,   # 如果数据足够，创建5000个测试样本
+        output_file="Time-R1/datasets/test_time_completion.parquet",
+        num_samples=5000,   # If the data is sufficient, create 5000 test samples
         split_name="test"
     )
 

@@ -180,8 +180,8 @@ def generate_requests(articles, target_months=None, total_per_month=600):
 
 def main():
     # Parameters
-    input_folder = "/data/zliu331/temporal_reasoning/TinyZero/datasets/nyt_years"
-    output_file = "/data/zliu331/temporal_reasoning/TinyZero/future_news_generation/v3_generation_4prediction_api_batch.jsonl"
+    input_folder = "Time-R1/datasets/nyt_years"
+    output_file = "Time-R1/future_news_generation/v3_generation_4prediction_api_batch.jsonl"
     
     # Load past articles
     print("Loading articles from 2024 May-July...")

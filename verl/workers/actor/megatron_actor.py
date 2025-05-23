@@ -114,7 +114,7 @@ class MegatronPPOActor(BasePPOActor):
         self.actor_optimizer: DistributedOptimizer = actor_optimizer
 
         from torch.optim.lr_scheduler import CosineAnnealingLR
-        # 使用配置中的总训练步数和最小学习率来创建调度器
+        # Create a scheduler using the total training steps and minimum learning rate in the configuration
         self.actor_scheduler = CosineAnnealingLR(
             self.actor_optimizer,
             T_max=self.config.actor_rollout_ref.actor.optim.total_training_steps,

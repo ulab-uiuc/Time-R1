@@ -4,10 +4,8 @@ import pandas as pd
 from datetime import datetime
 
 def parse_year_month_from_true(date_str: str):
-    """
-    解析真实发布时间字符串，期望格式为 "YYYY-MM"，
-    返回 (year, month)；若解析失败则返回 (None, None)。
-    """
+    """Parses the real release time string, the expected format is "YYYY-MM",
+    Returns (year, month); returns (None, None) if parsing fails."""
     try:
         dt = datetime.strptime(date_str.strip(), "%Y-%m")
         return dt.year, dt.month
@@ -15,36 +13,32 @@ def parse_year_month_from_true(date_str: str):
         return None, None
 
 def parse_prediction(pred_str: str):
-    """
-    去掉 "Prediction:" 前缀，返回剩余内容。
-    """
+    """Remove the "Prediction:" prefix and return the remaining content."""
     return pred_str.replace("Prediction:", "").strip()
 
 def month_difference(pred_year, pred_month, true_year, true_month):
-    """
-    计算预测日期与真实日期之间的月份差。
-    """
+    """Calculate the month difference between the predicted date and the real date."""
     return (pred_year - true_year) * 12 + (pred_month - true_month)
 
-# 预设基础数据所在目录（存放 f"{year}-0.jsonl" 文件）
-input_dir = "/data/zliu331/temporal_reasoning/TinyZero/preliminary/original_ability_result"
+# Preset the directory where the basic data is located (store the f"{year}-0.jsonl" file)
+input_dir = "Time-R1/preliminary/original_ability_result"
 
-# 验证集 Parquet 文件路径
-val_parquet = "/data/zliu331/temporal_reasoning/TinyZero/datasets/small_test_nyt.parquet"
+# Verification Set Parquet File Path
+val_parquet = "Time-R1/datasets/small_test_nyt.parquet"
 
-# 加载验证集数据
+# Load the verification set data
 df_val = pd.read_parquet(val_parquet)
 
-errors = []            # 用于存放能解析预测日期的新闻的误差（单位：月）
-cannot_parse_count = 0 # 统计无法解析预测日期的新闻数
-not_found_count = 0    # 统计在基础数据中未匹配到新闻的数目
+errors = []            # Error used to store news that can analyze predicted dates (unit: month)
+cannot_parse_count = 0 # Statistics the number of news that cannot be parsed for predicted dates
+not_found_count = 0    # Statistics the number of news that has not been matched in the basic data
 
-# 遍历验证集中的每一条记录
+# traverse every record in the verification set
 for idx, row in df_val.iterrows():
-    # 提取 prompt 中的内容（假设 prompt 为 list，取第一个元素的 content）
+    # Extract the content in prompt (assuming prompt is list, take the content of the first element)
     prompt_content = row['prompt'][0]['content']
     
-    # 从 prompt 中提取出包含 headline 的那一行，假设格式为 "Headline: {headline}"
+    # Extract the line containing the headline from prompt, assuming the format is "Headline: {headline}"
     headline = None
     for line in prompt_content.splitlines():
         if line.startswith("Headline:"):
@@ -55,7 +49,7 @@ for idx, row in df_val.iterrows():
         cannot_parse_count += 1
         continue
 
-    # 获取真实发布日期，格式例如 "2024-08"，从 reward_model 中提取
+    # Get the real release date, format such as "2024-08", extracted from reward_model
     true_pub_date = row['reward_model']['ground_truth']['true_pub_date']
     true_year, true_month = parse_year_month_from_true(true_pub_date)
     if true_year is None:
@@ -63,14 +57,14 @@ for idx, row in df_val.iterrows():
         cannot_parse_count += 1
         continue
 
-    # 构造对应年份的基础数据文件路径
+    # Construct the path of the basic data file for the corresponding year
     jsonl_file = os.path.join(input_dir, f"{true_year}-0.jsonl")
     if not os.path.isfile(jsonl_file):
         print(f"Row {idx}: JSONL file not found: {jsonl_file}")
         not_found_count += 1
         continue
 
-    # 在对应的 jsonl 文件中查找 headline 匹配的记录
+    # Find headline matching records in the corresponding jsonl file
     matched_record = None
     with open(jsonl_file, "r", encoding="utf-8") as f:
         for line in f:
@@ -78,7 +72,7 @@ for idx, row in df_val.iterrows():
                 data = json.loads(line.strip())
             except Exception:
                 continue
-            # 假设 headline 完全匹配即可（可根据需要调整匹配策略）
+            # Assume that the headline matches exactly (the matching strategy can be adjusted as needed)
             if data.get("headline", "").strip() == headline:
                 matched_record = data
                 break
@@ -87,7 +81,7 @@ for idx, row in df_val.iterrows():
         not_found_count += 1
         continue
 
-    # 从匹配记录中获取预测日期
+    # Get the predicted date from the matched record
     model_prediction = matched_record.get("model_prediction", "")
     pred_str = parse_prediction(model_prediction)
     try:
@@ -97,11 +91,11 @@ for idx, row in df_val.iterrows():
         cannot_parse_count += 1
         continue
 
-    # 计算预测误差（单位：月），取绝对值
+    # Calculate the prediction error (unit: month), take the absolute value
     error = abs(month_difference(pred_year, pred_month, true_year, true_month))
     errors.append(error)
 
-# 计算平均预测误差（仅针对能解析的新闻）
+# Calculate the average prediction error (only for analytical news)
 if errors:
     average_error = sum(errors) / len(errors)
 else:
@@ -119,13 +113,11 @@ import os
 import json
 import pandas as pd
 from datetime import datetime
-from verl.utils.reward_score.news import date_prediction_reward
+from verl.utils.reward_score.time_reasoning_fixed_alpha import date_prediction_reward
 
 def parse_year_month_from_true(date_str: str):
-    """
-    解析真实发布时间字符串，期望格式为 "YYYY-MM"，
-    返回 (year, month)；若解析失败则返回 (None, None)。
-    """
+    """Parses the real release time string, the expected format is "YYYY-MM",
+    Returns (year, month); returns (None, None) if parsing fails."""
     try:
         dt = datetime.strptime(date_str.strip(), "%Y-%m")
         return dt.year, dt.month
@@ -133,36 +125,32 @@ def parse_year_month_from_true(date_str: str):
         return None, None
 
 def parse_prediction(pred_str: str):
-    """
-    去掉 "Prediction:" 前缀，返回剩余内容。
-    """
+    """Remove the "Prediction:" prefix and return the remaining content."""
     return pred_str.replace("Prediction:", "").strip()
 
 def month_difference(pred_year, pred_month, true_year, true_month):
-    """
-    计算预测日期与真实日期之间的月份差。
-    """
+    """Calculate the month difference between the predicted date and the real date."""
     return (pred_year - true_year) * 12 + (pred_month - true_month)
 
-# 预设基础数据所在目录（存放 f"{year}-0.jsonl" 文件）
-input_dir = "/data/zliu331/temporal_reasoning/TinyZero/preliminary/original_ability_result"
+# Preset the directory where the basic data is located (store the f"{year}-0.jsonl" file)
+input_dir = "Time-R1/preliminary/original_ability_result"
 
-# 验证集 Parquet 文件路径
-val_parquet = "/data/zliu331/temporal_reasoning/TinyZero/datasets/small_test_nyt.parquet"
+# Verification Set Parquet File Path
+val_parquet = "Time-R1/datasets/small_test_nyt.parquet"
 
-# 加载验证集数据
+# Load the verification set data
 df_val = pd.read_parquet(val_parquet)
 
-rewards = []            # 用于存放能解析预测日期的新闻的 date_prediction_reward 分数
-cannot_parse_count = 0 # 统计无法解析预测日期的新闻数
-not_found_count = 0    # 统计在基础数据中未匹配到新闻的数目
+rewards = []            # Used to store date_prediction_reward scores for news that can parse predicted dates
+cannot_parse_count = 0 # Statistics the number of news that cannot be parsed for predicted dates
+not_found_count = 0    # Statistics the number of news that has not been matched in the basic data
 
-# 遍历验证集中的每一条记录
+# traverse every record in the verification set
 for idx, row in df_val.iterrows():
-    # 提取 prompt 中的内容（假设 prompt 为 list，取第一个元素的 content）
+    # Extract the content in prompt (assuming prompt is list, take the content of the first element)
     prompt_content = row['prompt'][0]['content']
     
-    # 从 prompt 中提取出包含 headline 的那一行，假设格式为 "Headline: {headline}"
+    # Extract the line containing the headline from prompt, assuming the format is "Headline: {headline}"
     headline = None
     for line in prompt_content.splitlines():
         if line.startswith("Headline:"):
@@ -173,7 +161,7 @@ for idx, row in df_val.iterrows():
         cannot_parse_count += 1
         continue
 
-    # 获取真实发布日期，格式例如 "2024-08"，从 reward_model 中提取
+    # Get the real release date, format such as "2024-08", extracted from reward_model
     true_pub_date = row['reward_model']['ground_truth']['true_pub_date']
     true_year, true_month = parse_year_month_from_true(true_pub_date)
     if true_year is None:
@@ -181,14 +169,14 @@ for idx, row in df_val.iterrows():
         cannot_parse_count += 1
         continue
 
-    # 构造对应年份的基础数据文件路径
+    # Construct the path of the basic data file for the corresponding year
     jsonl_file = os.path.join(input_dir, f"{true_year}-0.jsonl")
     if not os.path.isfile(jsonl_file):
         print(f"Row {idx}: JSONL file not found: {jsonl_file}")
         not_found_count += 1
         continue
 
-    # 在对应的 jsonl 文件中查找 headline 匹配的记录
+    # Find headline matching records in the corresponding jsonl file
     matched_record = None
     with open(jsonl_file, "r", encoding="utf-8") as f:
         for line in f:
@@ -196,7 +184,7 @@ for idx, row in df_val.iterrows():
                 data = json.loads(line.strip())
             except Exception:
                 continue
-            # 假设 headline 完全匹配即可（可根据需要调整匹配策略）
+            # Assume that the headline matches exactly (the matching strategy can be adjusted as needed)
             if data.get("headline", "").strip() == headline:
                 matched_record = data
                 break
@@ -205,7 +193,7 @@ for idx, row in df_val.iterrows():
         not_found_count += 1
         continue
 
-    # 从匹配记录中获取预测日期
+    # Get the predicted date from the matched record
     model_prediction = matched_record.get("model_prediction", "")
     pred_str_value = parse_prediction(model_prediction)
     try:
@@ -215,14 +203,14 @@ for idx, row in df_val.iterrows():
         cannot_parse_count += 1
         continue
 
-    # 格式化预测日期为字符串，例如 "2025-03"
+    # Format the prediction date as a string, for example "2025-03"
     pred_date_str = f"{pred_year}-{pred_month:02d}"
 
-    # 使用 news.py 中的 date_prediction_reward 计算奖励分数
+    # Use date_prediction_reward in news.py to calculate reward scores
     reward_score = date_prediction_reward(pred_date_str, true_pub_date, alpha=0.05)
     rewards.append(reward_score)
 
-# 计算平均 date_prediction_reward（仅针对能解析的新闻）
+# Calculate the average date_prediction_reward (only for parsable news)
 if rewards:
     average_reward = sum(rewards) / len(rewards)
 else:

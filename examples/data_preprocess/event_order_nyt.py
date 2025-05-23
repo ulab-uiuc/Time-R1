@@ -165,7 +165,7 @@ def build_time_ordering_dataset(events, output_file, num_samples, split_name):
 
 if __name__ == "__main__":
     # The input directory where the original JSONL files are stored
-    input_dir = "/data/zliu331/temporal_reasoning/TinyZero/preliminary/original_ability_result"
+    input_dir = "Time-R1/preliminary/original_ability_result"
     years = range(2016, 2024)  # Using data from 2016 to 2023
     
     # Load and split events
@@ -174,7 +174,7 @@ if __name__ == "__main__":
     # Build training dataset (40,000 samples)
     build_time_ordering_dataset(
         train_events,
-        output_file="/data/zliu331/temporal_reasoning/TinyZero/datasets/train_time_ordering.parquet",
+        output_file="Time-R1/datasets/train_time_ordering.parquet",
         num_samples=50000,
         split_name="train"
     )
@@ -182,7 +182,7 @@ if __name__ == "__main__":
     # Build test dataset (4,000 samples)
     build_time_ordering_dataset(
         test_events,
-        output_file="/data/zliu331/temporal_reasoning/TinyZero/datasets/test_time_ordering.parquet",
+        output_file="Time-R1/datasets/test_time_ordering.parquet",
         num_samples=5000,
         split_name="test"
     )

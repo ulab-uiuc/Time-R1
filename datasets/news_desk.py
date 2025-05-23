@@ -8,14 +8,14 @@ def count_news_desk_categories(json_file):
     desk_counts = {}
 
     for doc in docs:
-        # 获取 news_desk 字段，如果不存在或为空，则使用 "Undefined" 作为标识
+        # Get the news_desk field, if it does not exist or is empty, use "Undefined" as the identifier
         desk = doc.get("news_desk") or "Undefined"
         desk_counts[desk] = desk_counts.get(desk, 0) + 1
 
-    print(f"该 JSON 文件中共有 {len(desk_counts)} 个不同的 'news_desk' 类别：")
+    print(f"There are {len(desk_counts)} different 'news_desk' categories in this JSON file:")
     for desk, count in desk_counts.items():
-        print(f" - {desk}: {count} 条")
+        print(f"- {desk}: {count}")
 
 if __name__ == "__main__":
-    # 将 archive.json 替换为你的 JSON 文件路径
+    # Replace archive.json with your JSON file path
     count_news_desk_categories("nyt_archives/2016_02.json")
