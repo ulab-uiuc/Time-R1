@@ -56,7 +56,7 @@ Our experiments show that a 3B-parameter Time-R1 model significantly outperforms
 
 ## 🧠 Dynamic Reward System
 
-A core component of Time-R1 is its dynamic rule-based reward system. This system is crucial for guiding the LLM through the complexities of temporal reasoning. The detailed implementation of our reward functions can be found in the following files within the `verl` framework:
+A core component of Time-R1 is its dynamic rule-based reward system. This system is crucial for guiding the LLM through the complexities of temporal reasoning. The detailed implementation of our reward functions can be found in the following files:
 *   `Time-R1/verl/utils/reward_score/time_reasoning.py` (over 1200 lines of code dedicated to various temporal comprehension reward calculations)
 *   `Time-R1/verl/utils/reward_score/time_prediction.py` (handles rewards for future time prediction tasks)
 
