@@ -4,7 +4,7 @@ Time-R1: Towards Comprehensive Temporal Reasoning in LLMs
 </h1>
 </div>
 <div align="center">
-<a href="https://huggingface.co/collections/ulab-ai/time-r1-682626aea47cb2b876285a16">🤗 <strong>Model</strong></a> | <a href="https://huggingface.co/datasets/ulab-ai/Time-Bench">📊 <strong>Dataset</strong></a> | <a href="https://arxiv.org/abs/2505.13508">📖 <strong>Paper</strong></a>
+<a href="https://huggingface.co/collections/ulab-ai/time-r1-682626aea47cb2b876285a16">🤗 <strong>Model (Time-R1)</strong></a> | <a href="https://huggingface.co/datasets/ulab-ai/Time-Bench">📊 <strong>Dataset (Time-Bench)</strong></a> | <a href="https://arxiv.org/abs/2505.13508">📖 <strong>Paper</strong></a>
 </div>
 
 **Time-R1 is a framework designed to endow Language Models (LLMs) with comprehensive temporal reasoning capabilities, enabling them to progressively cultivate sophisticated temporal logic from past events, predict future occurrences, and creatively generate plausible future scenarios.**
