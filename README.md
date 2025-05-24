@@ -43,8 +43,10 @@ archive-product/1/overview).
     * Further details on dataset construction can be found in Appendix B of our [paper](https://arxiv.org/abs/2505.13508).
     * The training scripts expect the dataset files (e.g., `.parquet` files) to be placed in a `datasets` subdirectory within the `OUTPUT_BASE_DIR` specified in the scripts (e.g., `Time-R1/datasets/`).
 * **[Time-R1 Model Checkpoints](https://huggingface.co/collections/ulab-ai/time-r1-682626aea47cb2b876285a16):**
-    * Includes checkpoints for $\theta_1$ (after Stage 1) and $\theta_2$ (after Stage 2).
-* **Source Code:** For training Time-R1 and evaluating on Time-Bench.
+    * Includes progressive checkpoints from Stage 1 (Phases 1, 2, and 3, where Phase 3 yields $\theta_1$).
+    * An ablation model from Stage 1 ($\theta_1'$, without dynamic reward design).
+    * The final model after Stage 2 ($\theta_2$).
+* **[Source Code](https://github.com/ulab-uiuc/Time-R1):** For training Time-R1 and evaluating on Time-Bench.
 
 
 ## 🚀 Key Features
