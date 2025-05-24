@@ -6,13 +6,13 @@ Time-R1: Towards Comprehensive Temporal Reasoning in LLMs
 
 **Time-R1 is a framework designed to endow Language Models (LLMs) with comprehensive temporal reasoning capabilities, enabling them to progressively cultivate sophisticated temporal logic from past events, predict future occurrences, and creatively generate plausible future scenarios.**
 
-This repository contains the official code, the Time-Bench dataset, and pre-trained model checkpoints for our [paper](https://arxiv.org/abs/2505.13508):
+This repository contains the official code, the [Time-Bench dataset](https://huggingface.co/datasets/ulab-ai/Time-Bench), and pre-trained model checkpoints for our [paper](https://arxiv.org/abs/2505.13508):
 > **Time-R1: Towards Comprehensive Temporal Reasoning in LLMs** > Zijia Liu, Peixuan Han, Haofei Yu, Haoru Li, Jiaxuan You  
 
 <div align="center">
 
 <!-- ![](figures/output_examples.png) -->
-<img src="figures/output_examples.png" width="80%"/>
+<img src="figures/output_examples.png" width="70%"/>
 <br/><em>Figure: Time-R1 output examples: Event Prediction (Stage 2, Left) & Future Scenario Generation (Stage 3, Right).</em>
 </div>
 
@@ -33,10 +33,11 @@ Our experiments show that a 3B-parameter Time-R1 model significantly outperforms
 
 ## 📚 Released Resources
 
-* **Time-Bench Dataset:** [Coming soon]
-    * Contains over 200,000 examples with explicit temporal annotations.
+* **[Time-Bench Dataset](https://huggingface.co/datasets/ulab-ai/Time-Bench):** 
+    * Contains over 200,000 examples with explicit temporal annotations obtained and processed through [The New York Times Archive api](https://developer.nytimes.com/docs/
+archive-product/1/overview).
     * Covers diverse tasks: timestamp inference, time-gap estimation, event ordering, and masked time entity completion.
-    * Further details on dataset construction can be found in Appendix [X] of our paper and [link to your dataset appendix/documentation if separate].
+    * Further details on dataset construction can be found in Appendix B of our [paper](https://arxiv.org/abs/2505.13508).
     * The training scripts expect the dataset files (e.g., `.parquet` files) to be placed in a `datasets` subdirectory within the `OUTPUT_BASE_DIR` specified in the scripts (e.g., `Time-R1/datasets/`).
 * **Time-R1 Model Checkpoints:** [Coming soon]
     * Includes checkpoints for $\theta_1$ (after Stage 1) and $\theta_2$ (after Stage 2).
@@ -137,6 +138,8 @@ While Stage 3 (Creative Future Scenario Generation) does not involve direct fine
 *   Script: `future_news_generation/stage3.sh`
 *   This script uses the $\theta_2$ checkpoint for news generation and then runs analysis scripts on the generated content.
 
+For detailed hyperparameters and further experimental setup, please refer to the [main paper](https://arxiv.org/abs/2505.13508) and the provided scripts.
+
 ---
 
 ## 📈 Results
@@ -160,7 +163,7 @@ The $\theta_2$ model, after being trained in Stage 2, demonstrates strong capabi
 
 <!-- ![](figures/Stage2_result.png)
 ![](figures/Stage3_result.png) -->
-<img src="figures/Stage2_result.png" alt="Stage 2 Results" width="90%" style="display: block; margin-left: auto; margin-right: auto; margin-bottom: 35px;"/>
+<img src="figures/Stage2_result.png" alt="Stage 2 Results" width="90%" style="display: block; margin-left: auto; margin-right: auto; margin-bottom: 45px;"/>
 <img src="figures/Stage3_result.png" alt="Stage 3 Results" width="90%" style="display: block; margin-left: auto; margin-right: auto;"/>
   
 
@@ -168,4 +171,16 @@ The $\theta_2$ model, after being trained in Stage 2, demonstrates strong capabi
 </div>
 
 ---
-For detailed hyperparameters and further experimental setup, please refer to the main paper and the provided scripts.
+
+## Acknowledgement
+
+The concept of Time-R1 is inspired by [Deepseek-R1](https://github.com/deepseek-ai/DeepSeek-R1) and [TinyZero](https://github.com/Jiayi-Pan/TinyZero/tree/main). Its implementation is built upon [veRL](https://github.com/volcengine/verl). We sincerely appreciate the efforts of these teams for their contributions to open-source research and development.
+
+## Citations
+```bibtex
+@article{liu2025time,
+  title={Time-R1: Towards Comprehensive Temporal Reasoning in LLMs},
+  author={Liu, Zijia and Han, Peixuan and Yu, Haofei and Li, Haoru and You, Jiaxuan},
+  journal={arXiv preprint arXiv:2505.13508},
+  year={2025}
+}
