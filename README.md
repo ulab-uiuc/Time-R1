@@ -3,10 +3,13 @@
 Time-R1: Towards Comprehensive Temporal Reasoning in LLMs
 </h1>
 </div>
+<div align="center">
+<a href="https://huggingface.co/collections/ulab-ai/time-r1-682626aea47cb2b876285a16">🤗 <strong>Model</strong></a> | <a href="https://huggingface.co/datasets/ulab-ai/Time-Bench">📊 <strong>Dataset</strong></a> | <a href="https://arxiv.org/abs/2505.13508">📖 <strong>Paper</strong></a>
+</div>
 
 **Time-R1 is a framework designed to endow Language Models (LLMs) with comprehensive temporal reasoning capabilities, enabling them to progressively cultivate sophisticated temporal logic from past events, predict future occurrences, and creatively generate plausible future scenarios.**
 
-This repository contains the official code, the [Time-Bench dataset](https://huggingface.co/datasets/ulab-ai/Time-Bench), and pre-trained model checkpoints for our [paper](https://arxiv.org/abs/2505.13508):
+This repository contains the official code, the [Time-Bench dataset](https://huggingface.co/datasets/ulab-ai/Time-Bench), and fine-tuned [model checkpoints](https://huggingface.co/collections/ulab-ai/time-r1-682626aea47cb2b876285a16) for our [paper](https://arxiv.org/abs/2505.13508):
 > **Time-R1: Towards Comprehensive Temporal Reasoning in LLMs** > Zijia Liu, Peixuan Han, Haofei Yu, Haoru Li, Jiaxuan You  
 
 <div align="center">
@@ -39,7 +42,7 @@ archive-product/1/overview).
     * Covers diverse tasks: timestamp inference, time-gap estimation, event ordering, and masked time entity completion.
     * Further details on dataset construction can be found in Appendix B of our [paper](https://arxiv.org/abs/2505.13508).
     * The training scripts expect the dataset files (e.g., `.parquet` files) to be placed in a `datasets` subdirectory within the `OUTPUT_BASE_DIR` specified in the scripts (e.g., `Time-R1/datasets/`).
-* **Time-R1 Model Checkpoints:** [Coming soon]
+* **[Time-R1 Model Checkpoints](https://huggingface.co/collections/ulab-ai/time-r1-682626aea47cb2b876285a16):**
     * Includes checkpoints for $\theta_1$ (after Stage 1) and $\theta_2$ (after Stage 2).
 * **Source Code:** For training Time-R1 and evaluating on Time-Bench.
 
