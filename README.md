@@ -170,7 +170,7 @@ The impact of our dynamic reward mechanism is also illustrated below. The blue c
 
 <img src="figures/Stage1_training.png" width="90%"/>
 
-*Figure: Training curves for Stage 1. Red: Time-R1 with 3-phase dynamic rewards. Blue: Ablation without dynamic reward design.*
+*Figure: Training curves for Stage 1. Red: Time-R1 (Phase 3) with dynamic rewards. Blue: Ablation without dynamic reward design.*
 </div>
 
 ### Stage 2 & 3: Future Prediction and Generation ($\theta_2$)
