@@ -7,6 +7,11 @@ Time-R1: Towards Comprehensive Temporal Reasoning in LLMs
 <a href="https://huggingface.co/collections/ulab-ai/time-r1-682626aea47cb2b876285a16">🤗 <strong>Model (Time-R1)</strong></a> | <a href="https://huggingface.co/datasets/ulab-ai/Time-Bench">📊 <strong>Dataset (Time-Bench)</strong></a> | <a href="https://arxiv.org/abs/2505.13508">📖 <strong>Paper</strong></a>
 </div>
 
+<div align="center">
+<a href="https://mp.weixin.qq.com/s/HOG8Es3sefi91f7XoMDhNQ">📢 <strong>Coverage (WeChat Account)</strong></a> | <a href="https://b23.tv/aArKNSY">🎬 <strong>Video (Bilibili)</strong></a>
+</div>
+<br>
+
 **Time-R1 is a framework designed to endow Language Models (LLMs) with comprehensive temporal reasoning capabilities, enabling them to progressively cultivate sophisticated temporal logic from past events, predict future occurrences, and creatively generate plausible future scenarios.**
 
 This repository contains the official code, the [Time-Bench dataset](https://huggingface.co/datasets/ulab-ai/Time-Bench), and fine-tuned [model checkpoints](https://huggingface.co/collections/ulab-ai/time-r1-682626aea47cb2b876285a16) for our [paper](https://arxiv.org/abs/2505.13508):
@@ -152,11 +157,18 @@ For detailed hyperparameters and further experimental setup, please refer to the
 ### Stage 1: Temporal Comprehension ($\theta_1$)
 Through careful reward design and a phased training curriculum, our Stage 1 results have shown significant improvements, particularly in tasks like time-difference estimation, substantially surpassing the results reported in the main paper. **The overall average performance of our $\theta_1$ model (after the 3-phase training) now exceeds that of models over 200 times its size, such as DeepSeek-V3-0324-671B**.
 
-The impact of our dynamic reward mechanism is illustrated below. The blue curve represents the training progression of $\theta_1$ using our full 3-phase dynamic reward design, while the red curve shows an ablation study where the dynamic reward components are omitted (trained using `scripts/stage1_no_dynamic_reward.sh`).
-
 <div align="center">
 
 <img src="figures/Stage1_result.png" width="90%"/>
+
+*Figure: Performance comparison for temporal comprehension (Stage 1).*
+</div>
+
+The impact of our dynamic reward mechanism is also illustrated below. The blue curve represents the training progression of $\theta_1$ using our full 3-phase dynamic reward design, while the red curve shows an ablation study where the dynamic reward components are omitted (trained using `scripts/stage1_no_dynamic_reward.sh`).
+
+<div align="center">
+
+<img src="figures/Stage1_training.png" width="90%"/>
 
 *Figure: Training curves for Stage 1. Blue: Time-R1 with 3-phase dynamic rewards. Red: Ablation without dynamic reward design.*
 </div>
@@ -169,6 +181,7 @@ The $\theta_2$ model, after being trained in Stage 2, demonstrates strong capabi
 <!-- ![](figures/Stage2_result.png)
 ![](figures/Stage3_result.png) -->
 <img src="figures/Stage2_result.png" alt="Stage 2 Results" width="90%" style="display: block; margin-left: auto; margin-right: auto; margin-bottom: 45px;"/>
+<br>
 <img src="figures/Stage3_result.png" alt="Stage 3 Results" width="90%" style="display: block; margin-left: auto; margin-right: auto;"/>
   
 
