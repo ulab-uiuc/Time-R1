@@ -8,7 +8,7 @@ Time-R1: Towards Comprehensive Temporal Reasoning in LLMs
 </div>
 
 <div align="center">
-<a href="https://mp.weixin.qq.com/s/HOG8Es3sefi91f7XoMDhNQ">📢 <strong>Coverage (WeChat Account)</strong></a> | <a href="https://b23.tv/aArKNSY">🎬 <strong>Video (Bilibili)</strong></a>
+<a href="https://mp.weixin.qq.com/s/HOG8Es3sefi91f7XoMDhNQ">📢 <strong>Coverage (WeChat Account)</strong></a> | <a href="https://b23.tv/aArKNSY">🎬 <strong>Video (Bilibili)</strong></a> | <a href="https://drive.google.com/file/d/1c4Ob3VFbSAdJkXIdEAqY9jzTXjlc8nUj/view?usp=drive_link">💡 <strong>Slides</strong></a>
 </div>
 <br>
 
